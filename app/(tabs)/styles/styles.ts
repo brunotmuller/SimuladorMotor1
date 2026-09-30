@@ -1,17 +1,322 @@
 import { StyleSheet } from "react-native";
 
 export const styles = StyleSheet.create({
+  hero: {
+    backgroundColor: "#1a0e12",
+    borderWidth: 1,
+    borderColor: "#6a2832",
+    borderRadius: 24,
+    padding: 30,
+    marginBottom: 24,
+    overflow: "hidden",
+  },
+  heroLinha: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  heroLinhaVermelha: {
+    width: 24,
+    height: 3,
+    borderRadius: 3,
+    backgroundColor: "#ff4658",
+    marginRight: 10,
+  },
+  heroDivisor: {
+    height: 1,
+    backgroundColor: "#612b34",
+    marginBottom: 20,
+  },
+  heroGlow: {
+    position: "absolute",
+    width: 230,
+    height: 230,
+    borderRadius: 115,
+    backgroundColor: "#4b151f",
+    right: -90,
+    top: -110,
+  },
+  heroEyebrow: {
+    color: "#ff6574",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.5,
+  },
+  heroTags: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  heroTag: {
+    color: "#f5e5e7",
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 0.6,
+    backgroundColor: "#31161b",
+    borderWidth: 1,
+    borderColor: "#71313a",
+    paddingHorizontal: 11,
+    paddingVertical: 8,
+    borderRadius: 99,
+    overflow: "hidden",
+  },
+  sectionKicker: {
+    alignSelf: "flex-start",
+    backgroundColor: "#32161c",
+    borderWidth: 1,
+    borderColor: "#743039",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 14,
+  },
+  sectionKickerText: {
+    color: "#ff7180",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
+  descricaoSecao: {
+    color: "#bdaeb1",
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 23,
+  },
+  dicaBox: {
+    backgroundColor: "#211418",
+    borderLeftWidth: 3,
+    borderLeftColor: "#f04458",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 22,
+  },
+  dicaTitulo: {
+    color: "#ff7180",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  dicaTexto: {
+    color: "#d2bdc1",
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  textoAjuda: {
+    color: "#bdaeb1",
+    fontSize: 12,
+    lineHeight: 19,
+    marginTop: 12,
+  },
+  simulacaoBox: {
+    backgroundColor: "#251418",
+    borderWidth: 1,
+    borderColor: "#75313e",
+    borderRadius: 14,
+    padding: 18,
+    marginTop: 16,
+  },
+  simulacaoLabel: {
+    color: "#ff7180",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+  },
+  simulacaoValor: {
+    color: "#fff",
+    fontSize: 30,
+    fontWeight: "800",
+    marginTop: 7,
+  },
+  simulacaoDetalhe: {
+    color: "#d2bdc1",
+    fontSize: 12,
+    lineHeight: 19,
+    marginTop: 6,
+  },
+  salvoCard: {
+    backgroundColor: "#1d1619",
+    borderWidth: 1,
+    borderColor: "#4c3037",
+    borderRadius: 14,
+    padding: 15,
+    marginBottom: 10,
+  },
+  salvoNome: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "700",
+    lineHeight: 21,
+  },
+  salvoMeta: {
+    color: "#bdaeb1",
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 5,
+  },
+  salvoAcoes: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 14,
+  },
+  acaoPequena: {
+    backgroundColor: "#2b1c21",
+    borderWidth: 1,
+    borderColor: "#5d3039",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  acaoSelecionada: {
+    backgroundColor: "#8c2433",
+    borderColor: "#e04c60",
+  },
+  acaoPequenaTexto: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  acaoExcluirTexto: {
+    color: "#ff8793",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  comparacaoBox: {
+    backgroundColor: "#21171b",
+    borderWidth: 1,
+    borderColor: "#75313e",
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 10,
+  },
+  comparacaoLinha: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    borderBottomWidth: 1,
+    borderBottomColor: "#4c3037",
+    paddingVertical: 11,
+    gap: 8,
+  },
+  comparacaoRotulo: {
+    width: "25%",
+    color: "#bdaeb1",
+    fontSize: 11,
+  },
+  comparacaoValor: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  placaMensagem: {
+    color: "#ff9ba6",
+    backgroundColor: "#30171d",
+    borderWidth: 1,
+    borderColor: "#743039",
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 12,
+    fontSize: 12,
+  },
+  placaNumero: {
+    color: "#ff7180",
+    fontSize: 24,
+    fontWeight: "900",
+    letterSpacing: 2,
+    marginTop: 10,
+  },
+  placaVeiculo: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "800",
+    lineHeight: 27,
+    marginTop: 8,
+  },
+  placaSecaoTitulo: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "800",
+    marginTop: 22,
+    marginBottom: 3,
+  },
+  placaGrade: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 12,
+    columnGap: 10,
+  },
+  placaDetalhe: {
+    minWidth: "45%",
+    flexGrow: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: "#593039",
+    paddingVertical: 10,
+  },
+  placaRotulo: {
+    color: "#bdaeb1",
+    fontSize: 11,
+    marginBottom: 4,
+  },
+  placaValor: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  placaGrupo: {
+    marginTop: 20,
+  },
+  placaIpva: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    columnGap: 10,
+    marginBottom: 14,
+  },
+  placaImagem: {
+    width: "100%",
+    height: 180,
+    marginTop: 16,
+    borderRadius: 10,
+  },
+  placaAusentes: {
+    backgroundColor: "#191518",
+    borderWidth: 1,
+    borderColor: "#493238",
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 22,
+  },
+  placaAusentesTitulo: {
+    color: "#ead7db",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  placaAusentesTexto: {
+    color: "#bdaeb1",
+    fontSize: 12,
+    lineHeight: 19,
+    marginTop: 6,
+  },
+  divisorTexto: {
+    color: "#ae969b",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 1,
+    textAlign: "center",
+    marginVertical: 16,
+  },
   container: {
     flex: 1,
-    backgroundColor: "#090909",
+    backgroundColor: "#09090b",
   },
 
   content: {
     width: "100%",
-    maxWidth: 760,
+    maxWidth: 820,
     alignSelf: "center",
     paddingHorizontal: 20,
-    paddingTop: 42,
+    paddingTop: 28,
     paddingBottom: 40,
   },
 
@@ -19,23 +324,25 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 45,
+    flexWrap: "wrap",
+    columnGap: 12,
+    marginBottom: 24,
   },
 
-  logo: {
-    color: "#fff",
-    fontSize: 23,
-    fontWeight: "800",
-    letterSpacing: -0.8,
-  },
-
-  logoVermelho: {
-    color: "#ef3340",
+  logoImagem: {
+    width: 162,
+    height: 74,
   },
 
   status: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "#171317",
+    borderWidth: 1,
+    borderColor: "#41262c",
+    borderRadius: 99,
+    paddingHorizontal: 11,
+    paddingVertical: 8,
   },
 
   statusBolinha: {
@@ -51,25 +358,26 @@ export const styles = StyleSheet.create({
   },
 
   statusTexto: {
-    color: "#777",
+    color: "#c0b3b6",
     fontSize: 12,
   },
 
   titulo: {
     color: "#fff",
-    fontSize: 39,
-    lineHeight: 44,
-    fontWeight: "800",
-    letterSpacing: -1.6,
+    fontSize: 36,
+    lineHeight: 42,
+    fontWeight: "900",
+    letterSpacing: -1.5,
+    maxWidth: 700,
   },
 
   subtitulo: {
-    color: "#777",
+    color: "#d6c5c9",
     fontSize: 15,
     lineHeight: 23,
     maxWidth: 500,
     marginTop: 14,
-    marginBottom: 32,
+    marginBottom: 24,
   },
 
   mensagemErro: {
@@ -112,29 +420,35 @@ export const styles = StyleSheet.create({
   },
 
   card: {
-    backgroundColor: "#111",
-    borderRadius: 18,
-    padding: 20,
-    marginBottom: 14,
+    backgroundColor: "#141215",
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: "#3c292e",
+    padding: 24,
+    marginBottom: 18,
   },
 
   tituloSecao: {
     color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 22,
-  },
-
-  label: {
-    color: "#777",
-    fontSize: 11,
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: -0.5,
     marginBottom: 7,
   },
 
+  label: {
+    color: "#e4d6d9",
+    fontSize: 12,
+    fontWeight: "600",
+    marginBottom: 8,
+  },
+
   seletor: {
-    minHeight: 54,
+    minHeight: 58,
     borderRadius: 12,
-    backgroundColor: "#191919",
+    backgroundColor: "#0c0b0d",
+    borderWidth: 1,
+    borderColor: "#4c3037",
     paddingHorizontal: 15,
     marginBottom: 17,
     flexDirection: "row",
@@ -149,11 +463,11 @@ export const styles = StyleSheet.create({
   },
 
   placeholder: {
-    color: "#666",
+    color: "#9d858b",
   },
 
   desativado: {
-    opacity: 0.4,
+    opacity: 0.58,
   },
 
   chevron: {
@@ -174,16 +488,18 @@ export const styles = StyleSheet.create({
   },
 
   fipe: {
-    borderTopWidth: 1,
-    borderTopColor: "#222",
-    paddingTop: 18,
+    backgroundColor: "#231317",
+    borderWidth: 1,
+    borderColor: "#79404a",
+    borderRadius: 16,
+    padding: 18,
     marginTop: 5,
   },
 
   fipeLabel: {
-    color: "#666",
-    fontSize: 9,
-    fontWeight: "600",
+    color: "#ff7180",
+    fontSize: 10,
+    fontWeight: "800",
     letterSpacing: 0.8,
   },
 
@@ -207,7 +523,7 @@ export const styles = StyleSheet.create({
   },
 
   fipeDetalhe: {
-    color: "#777",
+    color: "#baa7ab",
     fontSize: 12,
   },
 
@@ -217,13 +533,13 @@ export const styles = StyleSheet.create({
   },
 
   codigoFipe: {
-    color: "#555",
+    color: "#a88d93",
     fontSize: 10,
     marginTop: 10,
   },
 
   referenciaFipe: {
-    color: "#555",
+    color: "#a88d93",
     fontSize: 10,
     marginTop: 3,
   },
@@ -242,9 +558,11 @@ export const styles = StyleSheet.create({
   },
 
   input: {
-    height: 54,
+    height: 58,
     borderRadius: 12,
-    backgroundColor: "#191919",
+    backgroundColor: "#0c0b0d",
+    borderWidth: 1,
+    borderColor: "#4c3037",
     paddingHorizontal: 14,
     color: "#fff",
     fontSize: 14,
@@ -252,10 +570,12 @@ export const styles = StyleSheet.create({
   },
 
   botao: {
-    minHeight: 58,
+    minHeight: 62,
     borderRadius: 14,
     paddingHorizontal: 20,
-    backgroundColor: "#ef3340",
+    backgroundColor: "#d9273e",
+    borderWidth: 1,
+    borderColor: "#ff6677",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -269,8 +589,9 @@ export const styles = StyleSheet.create({
 
   botaoTexto: {
     color: "#fff",
-    fontSize: 15,
-    fontWeight: "700",
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: 0.2,
   },
 
   botaoTextoCarregando: {
@@ -284,15 +605,17 @@ export const styles = StyleSheet.create({
   },
 
   resultado: {
-    backgroundColor: "#111",
+    backgroundColor: "#141215",
+    borderWidth: 1,
+    borderColor: "#6a303a",
     borderRadius: 20,
     padding: 22,
     marginBottom: 30,
   },
 
   resultadoPequeno: {
-    color: "#666",
-    fontSize: 9,
+    color: "#ff7180",
+    fontSize: 10,
     fontWeight: "700",
     letterSpacing: 1,
     marginBottom: 15,
@@ -312,7 +635,7 @@ export const styles = StyleSheet.create({
   },
 
   infoCarro: {
-    color: "#777",
+    color: "#bdaeb1",
     fontSize: 12,
     marginTop: 7,
   },
@@ -326,8 +649,8 @@ export const styles = StyleSheet.create({
   },
 
   valorFipeLabel: {
-    color: "#666",
-    fontSize: 9,
+    color: "#a9959a",
+    fontSize: 10,
     marginBottom: 5,
   },
 
@@ -348,8 +671,8 @@ export const styles = StyleSheet.create({
   },
 
   notaLabel: {
-    color: "#666",
-    fontSize: 9,
+    color: "#a9959a",
+    fontSize: 10,
   },
 
   nota: {
@@ -398,7 +721,9 @@ export const styles = StyleSheet.create({
 
   metrica: {
     width: "48.5%",
-    backgroundColor: "#181818",
+    backgroundColor: "#21171b",
+    borderWidth: 1,
+    borderColor: "#543039",
     borderRadius: 12,
     padding: 15,
   },
@@ -412,8 +737,8 @@ export const styles = StyleSheet.create({
   },
 
   metricaLabel: {
-    color: "#666",
-    fontSize: 10,
+    color: "#bdaeb1",
+    fontSize: 11,
     marginBottom: 7,
   },
 
@@ -460,27 +785,29 @@ export const styles = StyleSheet.create({
   },
 
   sustentabilidade: {
-    backgroundColor: "#121a15",
+    backgroundColor: "#191417",
+    borderWidth: 1,
+    borderColor: "#463036",
     borderRadius: 12,
     padding: 15,
     marginTop: 18,
   },
 
   sustentabilidadeTitulo: {
-    color: "#6fd090",
+    color: "#ff7180",
     fontSize: 12,
     fontWeight: "700",
     marginBottom: 6,
   },
 
   sustentabilidadeTexto: {
-    color: "#8a9b90",
+    color: "#c2b0b4",
     fontSize: 11,
     lineHeight: 18,
   },
 
   aviso: {
-    color: "#555",
+    color: "#a18e92",
     textAlign: "center",
     fontSize: 10,
     lineHeight: 16,
@@ -504,18 +831,19 @@ export const styles = StyleSheet.create({
 
   footer: {
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 22,
+    borderTopWidth: 1,
+    borderTopColor: "#38252a",
   },
 
-  footerLogo: {
-    color: "#666",
-    fontSize: 13,
-    fontWeight: "700",
+  footerLogoImagem: {
+    width: 175,
+    height: 80,
   },
 
   footerTexto: {
-    color: "#444",
-    fontSize: 9,
+    color: "#a18e92",
+    fontSize: 10,
     marginTop: 5,
   },
 
@@ -531,7 +859,9 @@ export const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 600,
     maxHeight: "80%",
-    backgroundColor: "#111",
+    backgroundColor: "#141215",
+    borderWidth: 1,
+    borderColor: "#6a303a",
     borderRadius: 18,
     padding: 18,
   },
@@ -563,7 +893,9 @@ export const styles = StyleSheet.create({
 
   busca: {
     height: 50,
-    backgroundColor: "#191919",
+    backgroundColor: "#0c0b0d",
+    borderWidth: 1,
+    borderColor: "#4c3037",
     borderRadius: 11,
     paddingHorizontal: 14,
     color: "#fff",
@@ -621,12 +953,12 @@ export const styles = StyleSheet.create({
   },
 
   opcao: {
-    backgroundColor: "#191919",
+    backgroundColor: "#0c0b0d",
     borderRadius: 10,
     paddingVertical: 11,
     paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: "#222",
+    borderColor: "#4c3037",
   },
 
   opcaoAtiva: {
@@ -635,7 +967,7 @@ export const styles = StyleSheet.create({
   },
 
   opcaoTexto: {
-    color: "#777",
+    color: "#e4d6d9",
     fontSize: 12,
     fontWeight: "600",
   },
@@ -647,7 +979,9 @@ export const styles = StyleSheet.create({
   detalhesNota: {
     marginTop: 18,
     padding: 16,
-    backgroundColor: "#181818",
+    backgroundColor: "#21171b",
+    borderWidth: 1,
+    borderColor: "#543039",
     borderRadius: 12,
   },
 

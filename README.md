@@ -1,5 +1,18 @@
 # Welcome to your Expo app 👋
 
+## Consulta por placa (Falcon Data Hub)
+
+A consulta usa um backend Node separado porque a versão web é publicada como site estático. O token da Falcon fica somente nesse backend; `EXPO_PUBLIC_PLATE_API_URL` contém apenas o endereço público dele.
+
+1. Copie `.env.example` para `.env` e preencha `FALCON_API_TOKEN` no arquivo local. O `.env` está ignorado pelo Git.
+2. Em um terminal, execute `npm run api` (Node 20.19 ou superior).
+3. Em outro terminal, execute `npm run web`. No desenvolvimento, o app chama `http://localhost:3001/api/vehicles`.
+4. Para publicar, hospede o backend Node em um servidor HTTPS, configure `ALLOWED_ORIGINS` com a origem do site e defina `EXPO_PUBLIC_PLATE_API_URL` com o endereço público terminado em `/api/vehicles` **antes** de gerar a versão web.
+
+O backend atende `GET /api/vehicles/:plate`, chama `GET https://beta.falcon-server.com.br/data-hub/private/v1/vehicles/:plate/search` com `Authorization: Bearer` e devolve apenas campos existentes na resposta. Se a Falcon retornar a URL de imagem, `GET /api/vehicles/:plate/image` serve a imagem por meio do backend. O token nunca deve receber o prefixo `EXPO_PUBLIC_`.
+
+Sem um token válido, a consulta informa que o servidor não está configurado. As demais funções do simulador continuam disponíveis.
+
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started

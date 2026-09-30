@@ -117,9 +117,11 @@ export default function VehicleSelector({
 }: Props) {
   return (
     <View style={styles.card}>
+      <View style={styles.sectionKicker}><Text style={styles.sectionKickerText}>01  /  IDENTIFICAÇÃO</Text></View>
       <Text style={styles.tituloSecao}>
         Veículo
       </Text>
+      <Text style={styles.descricaoSecao}>Comece pela marca. As opções seguintes aparecem conforme você escolhe.</Text>
 
       <Seletor
         label="Marca"
@@ -136,7 +138,7 @@ export default function VehicleSelector({
       <Seletor
         label="Modelo"
         valor={modelo?.name}
-        placeholder="Selecionar modelo"
+        placeholder={marca ? "Selecionar modelo" : "Escolha a marca primeiro"}
         carregando={carregandoModelos}
         disabled={
           !marca ||
@@ -149,7 +151,7 @@ export default function VehicleSelector({
       <Seletor
         label="Ano / combustível"
         valor={ano?.name}
-        placeholder="Selecionar ano"
+        placeholder={modelo ? "Selecionar ano" : "Escolha o modelo primeiro"}
         carregando={carregandoAnos}
         disabled={
           !modelo ||

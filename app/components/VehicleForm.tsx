@@ -113,9 +113,15 @@ export default function VehicleForm({
 }: Props) {
   return (
     <View style={styles.card}>
+      <View style={styles.sectionKicker}><Text style={styles.sectionKickerText}>02  /  CONDIÇÃO ATUAL</Text></View>
       <Text style={styles.tituloSecao}>
         Dados atuais
       </Text>
+      <Text style={styles.descricaoSecao}>Preencha os dados do carro para receber uma estimativa mais útil.</Text>
+      <View style={styles.dicaBox}>
+        <Text style={styles.dicaTitulo}>DICA RÁPIDA</Text>
+        <Text style={styles.dicaTexto}>Use os dados atuais do veículo. Para a calibragem, informe o valor em PSI mostrado no medidor.</Text>
+      </View>
 
       <Text style={styles.label}>
         Quilometragem

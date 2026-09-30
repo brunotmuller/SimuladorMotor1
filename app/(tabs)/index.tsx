@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Animated,
   Easing,
+  Image,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -15,8 +16,11 @@ import {
 } from "react-native";
 
 import Header from "../components/Header";
+import PlateLookup from "../components/PlateLookup";
 import ResultCard from "../components/ResultCard";
+import SavedAnalyses from "../components/SavedAnalyses";
 import SeletorModal from "../components/SeletorModal";
+import TripCalculator from "../components/TripCalculator";
 import VehicleForm from "../components/VehicleForm";
 import VehicleSelector from "../components/VehicleSelector";
 
@@ -28,10 +32,13 @@ import {
 } from "./services/fipeApi";
 
 import { analisarVeiculo } from "./utils/analyzer";
+import { carregarAnalises, gravarAnalises } from "./services/savedAnalyses";
+import { AnaliseSalva } from "./types/savedAnalysis";
 import { validarDados } from "./utils/validators";
 
 import {
   CondicaoPneu,
+  DadosAtuais,
   DadosFipe,
   ItemAPI,
   Resultado,
@@ -71,6 +78,10 @@ export default function HomeScreen() {
 
   const [resultado, setResultado] =
     useState<Resultado | null>(null);
+  const [dadosAnalisados, setDadosAnalisados] = useState<DadosAtuais | null>(null);
+  const [analisesSalvas, setAnalisesSalvas] = useState<AnaliseSalva[]>([]);
+  const [avisoSalvamento, setAvisoSalvamento] = useState("");
+  const [analiseSalvaId, setAnaliseSalvaId] = useState<string | null>(null);
 
   const [km, setKm] = useState("");
   const [peso, setPeso] = useState("");
@@ -138,6 +149,12 @@ export default function HomeScreen() {
       useNativeDriver: true,
     }).start();
   }, [entrada]);
+
+  useEffect(() => {
+    let ativo = true;
+    carregarAnalises().then((analises) => { if (ativo) setAnalisesSalvas(analises); });
+    return () => { ativo = false; };
+  }, []);
 
   async function carregarMarcas() {
     try {
@@ -282,8 +299,7 @@ export default function HomeScreen() {
     setMensagem("");
     setAnalisando(true);
 
-    const novoResultado =
-      analisarVeiculo(dadosFipe, {
+    const dadosAtuais: DadosAtuais = {
         km: Number(km),
         peso: Number(peso),
         calibragem: Number(calibragem),
@@ -293,9 +309,13 @@ export default function HomeScreen() {
         mesesUltimaRevisao: Number(
           mesesUltimaRevisao
         ),
-      });
+      };
+    const novoResultado = analisarVeiculo(dadosFipe, dadosAtuais);
 
     setResultado(novoResultado);
+    setDadosAnalisados(dadosAtuais);
+    setAvisoSalvamento("");
+    setAnaliseSalvaId(null);
 
     setTimeout(() => {
       setAnalisando(false);
@@ -316,6 +336,9 @@ export default function HomeScreen() {
 
     setDadosFipe(null);
     setResultado(null);
+    setDadosAnalisados(null);
+    setAvisoSalvamento("");
+    setAnaliseSalvaId(null);
 
     setKm("");
     setPeso("");
@@ -332,6 +355,56 @@ export default function HomeScreen() {
       y: 0,
       animated: true,
     });
+  }
+
+  async function salvarAnalise() {
+    if (!resultado || !dadosFipe || !dadosAnalisados || !marca || !modelo || !ano || analiseSalvaId) return;
+    const nova: AnaliseSalva = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      salvaEm: new Date().toISOString(),
+      fipe: dadosFipe,
+      dados: dadosAnalisados,
+      resultado,
+      selecao: { marca, modelo, ano },
+    };
+    const atualizadas = [nova, ...analisesSalvas];
+    if (await gravarAnalises(atualizadas)) {
+      setAnalisesSalvas(atualizadas);
+      setAnaliseSalvaId(nova.id);
+      setAvisoSalvamento("Análise salva neste dispositivo.");
+    } else {
+      setAvisoSalvamento("Não foi possível salvar neste dispositivo.");
+    }
+  }
+
+  async function excluirAnalise(id: string) {
+    const atualizadas = analisesSalvas.filter((item) => item.id !== id);
+    if (await gravarAnalises(atualizadas)) {
+      setAnalisesSalvas(atualizadas);
+      if (analiseSalvaId === id) {
+        setAnaliseSalvaId(null);
+        setAvisoSalvamento("");
+      }
+    }
+  }
+
+  function abrirAnalise(analise: AnaliseSalva) {
+    setMarca(analise.selecao.marca);
+    setModelo(analise.selecao.modelo);
+    setAno(analise.selecao.ano);
+    setDadosFipe(analise.fipe);
+    setResultado(analise.resultado);
+    setDadosAnalisados(analise.dados);
+    setKm(String(analise.dados.km));
+    setPeso(String(analise.dados.peso));
+    setCalibragem(String(analise.dados.calibragem));
+    setMesesUltimaRevisao(String(analise.dados.mesesUltimaRevisao));
+    setTipoPneu(analise.dados.pneu);
+    setTipoUso(analise.dados.tipoUso);
+    setCondicaoPneu(analise.dados.condicaoPneu);
+    setAvisoSalvamento("");
+    setAnaliseSalvaId(analise.id);
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }
 
   const entradaY =
@@ -393,6 +466,9 @@ export default function HomeScreen() {
                 )}
             </View>
           )}
+
+          <PlateLookup />
+          <Text style={styles.divisorTexto}>OU ESCOLHA O VEÍCULO MANUALMENTE</Text>
 
           <VehicleSelector
             marca={marca}
@@ -489,21 +565,30 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </Animated.View>
 
-        {resultado && dadosFipe && (
-          <ResultCard
-            resultado={resultado}
-            dadosFipe={dadosFipe}
-            limpar={limpar}
-          />
+        {resultado && dadosFipe && dadosAnalisados && (
+          <>
+            <ResultCard
+              resultado={resultado}
+              dadosFipe={dadosFipe}
+              dadosAtuais={dadosAnalisados}
+              salvar={salvarAnalise}
+              avisoSalvamento={avisoSalvamento}
+              salvo={!!analiseSalvaId}
+              limpar={limpar}
+            />
+            <TripCalculator consumo={resultado.consumo} />
+          </>
         )}
 
+        <SavedAnalyses analises={analisesSalvas} abrir={abrirAnalise} excluir={excluirAnalise} />
+
         <View style={styles.footer}>
-          <Text style={styles.footerLogo}>
-            Torque
-            <Text style={styles.logoVermelho}>
-              Lab
-            </Text>
-          </Text>
+          <Image
+            source={require("../../assets/images/torquelab-logo.png")}
+            style={styles.footerLogoImagem}
+            resizeMode="contain"
+            accessibilityLabel="TorqueLab"
+          />
 
           <Text style={styles.footerTexto}>
             Simulador veicular educacional •{" "}

@@ -9,28 +9,49 @@ import {
 import { styles } from "../(tabs)/styles/styles";
 
 import {
+  DadosAtuais,
   DadosFipe,
   Resultado,
 } from "../(tabs)/types/vehicle";
+import { analisarVeiculo } from "../(tabs)/utils/analyzer";
 
 type Props = {
   resultado: Resultado;
   dadosFipe: DadosFipe;
+  dadosAtuais: DadosAtuais;
+  salvar: () => void;
+  avisoSalvamento: string;
+  salvo: boolean;
   limpar: () => void;
 };
 
 export default function ResultCard({
   resultado,
   dadosFipe,
+  dadosAtuais,
+  salvar,
+  avisoSalvamento,
+  salvo,
   limpar,
 }: Props) {
   const larguraNota = `${Math.max(
     0,
     Math.min(resultado.nota, 100)
   )}%` as `${number}%`;
+  const cenarios = [
+    ...(dadosAtuais.condicaoPneu === "Desgastado" ? [{
+      titulo: "Pneus em bom estado",
+      dados: { ...dadosAtuais, condicaoPneu: "Bom" as const },
+    }] : []),
+    ...(dadosAtuais.mesesUltimaRevisao >= 12 ? [{
+      titulo: "Revisão em dia",
+      dados: { ...dadosAtuais, mesesUltimaRevisao: 0 },
+    }] : []),
+  ].map((cenario) => ({ ...cenario, nota: analisarVeiculo(dadosFipe, cenario.dados).nota }));
 
   return (
     <View style={styles.resultado}>
+      <View style={styles.sectionKicker}><Text style={styles.sectionKickerText}>03  /  SEU RESULTADO</Text></View>
       <Text style={styles.resultadoPequeno}>
         RESULTADO DA ANÁLISE
       </Text>
@@ -154,6 +175,7 @@ export default function ResultCard({
           <Text style={styles.detalhesTitulo}>
             Como a nota foi calculada
           </Text>
+          <Text style={styles.simulacaoDetalhe}>A nota começa em 100. Os fatores abaixo reduzem esse valor conforme os dados informados.</Text>
 
           {resultado.ajustes.map(
             (ajuste, index) => (
@@ -173,6 +195,19 @@ export default function ResultCard({
               </View>
             )
           )}
+        </View>
+      )}
+
+      {cenarios.length > 0 && (
+        <View style={styles.simulacaoBox}>
+          <Text style={styles.detalhesTitulo}>E se você mudasse algo?</Text>
+          {cenarios.map((cenario) => (
+            <View key={cenario.titulo} style={styles.detalheLinha}>
+              <Text style={styles.detalheTexto}>{cenario.titulo}</Text>
+              <Text style={styles.detalhePontos}>{cenario.nota}/100</Text>
+            </View>
+          ))}
+          <Text style={styles.textoAjuda}>Simulação isolada: cada cenário altera apenas o item indicado.</Text>
         </View>
       )}
 
@@ -217,6 +252,12 @@ export default function ResultCard({
         são estimativas educacionais do TorqueLab e
         não substituem uma avaliação mecânica.
       </Text>
+
+      <TouchableOpacity style={[styles.botao, salvo && styles.desativado]} activeOpacity={0.8} onPress={salvar} disabled={salvo} accessibilityRole="button">
+        <Text style={styles.botaoTexto}>{salvo ? "Análise salva" : "Salvar análise"}</Text>
+        <Text style={styles.botaoSeta}>{salvo ? "✓" : "+"}</Text>
+      </TouchableOpacity>
+      {!!avisoSalvamento && <Text style={styles.textoAjuda}>{avisoSalvamento}</Text>}
 
       <TouchableOpacity
         style={styles.botaoSecundario}
