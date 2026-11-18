@@ -1,63 +1,96 @@
-# Welcome to your Expo app 👋
+# Torque Lab
 
-## Consulta por placa (Falcon Data Hub)
+**Simulador veicular educacional** — consulte o valor FIPE, analise o estado do veículo e estime consumo e custos de viagem.
 
-A consulta usa um backend Node separado porque a versão web é publicada como site estático. O token da Falcon fica somente nesse backend; `EXPO_PUBLIC_PLATE_API_URL` contém apenas o endereço público dele.
+**Site:** [https://brunotmuller.github.io/SimuladorMotor1/](https://brunotmuller.github.io/SimuladorMotor1/)
 
-1. Copie `.env.example` para `.env` e preencha `FALCON_API_TOKEN` no arquivo local. O `.env` está ignorado pelo Git.
-2. Em um terminal, execute `npm run api` (Node 20.19 ou superior).
-3. Em outro terminal, execute `npm run web`. No desenvolvimento, o app chama `http://localhost:3001/api/vehicles`.
-4. Para publicar, hospede o backend Node em um servidor HTTPS, configure `ALLOWED_ORIGINS` com a origem do site e defina `EXPO_PUBLIC_PLATE_API_URL` com o endereço público terminado em `/api/vehicles` **antes** de gerar a versão web.
+---
 
-O backend atende `GET /api/vehicles/:plate`, chama `GET https://beta.falcon-server.com.br/data-hub/private/v1/vehicles/:plate/search` com `Authorization: Bearer` e devolve apenas campos existentes na resposta. Se a Falcon retornar a URL de imagem, `GET /api/vehicles/:plate/image` serve a imagem por meio do backend. O token nunca deve receber o prefixo `EXPO_PUBLIC_`.
+## O que é
 
-Sem um token válido, a consulta informa que o servidor não está configurado. As demais funções do simulador continuam disponíveis.
+O Torque Lab ajuda estudantes e motoristas a entenderem melhor um veículo em poucos passos:
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+1. **Escolha o carro** — marca, modelo e ano (Tabela FIPE) ou consulta por placa  
+2. **Informe como ele está** — km, peso, calibragem, pneus, uso e revisão  
+3. **Veja o resultado** — nota estimada, consumo, alertas e calculadora de viagem  
 
-## Get started
+Os resultados de consumo, saúde e nota são **estimativas educacionais**. Não substituem avaliação mecânica profissional. O valor FIPE vem de base externa oficial.
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## Funcionalidades
 
-2. Start the app
+| Recurso | Descrição |
+|---------|-----------|
+| Consulta FIPE | Marcas, modelos, anos e preço de mercado |
+| Análise veicular | Nota, consumo estimado, saúde e pontos de atenção |
+| Consulta por placa | Dados do veículo via backend + Falcon Data Hub |
+| Calculadora de viagem | Estimativa de custo a partir do consumo |
+| Histórico local | Salva análises no dispositivo (AsyncStorage) |
 
-   ```bash
-   npx expo start
-   ```
+---
 
-In the output, you'll find options to open the app in a
+## Tecnologias
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- **Frontend:** Expo · React Native Web · TypeScript · Expo Router  
+- **APIs:** Tabela FIPE (pública) · Falcon Data Hub (placa, via backend)  
+- **Backend:** Node.js (`server/`) — protege o token da API de placa  
+- **Deploy:** GitHub Pages (`gh-pages` + export estático)
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+---
 
-## Get a fresh project
-
-When you're ready, run:
+## Como rodar localmente
 
 ```bash
-npm run reset-project
+npm install
+npx expo start
+# ou só a versão web:
+npm run web
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Consulta por placa (opcional)
 
-## Learn more
+A versão web é estática; o token da Falcon fica só no backend Node.
 
-To learn more about developing your project with Expo, look at the following resources:
+1. Copie `.env.example` para `.env` e preencha `FALCON_API_TOKEN`  
+2. Terminal 1: `npm run api` (Node 20.19+)  
+3. Terminal 2: `npm run web` — o app chama `http://localhost:3001/api/vehicles`  
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Para produção: hospede o backend em HTTPS, configure `ALLOWED_ORIGINS` e defina `EXPO_PUBLIC_PLATE_API_URL` (terminando em `/api/vehicles`) **antes** do build web.
 
-## Join the community
+Sem token válido, a consulta por placa avisa que o servidor não está configurado. O restante do simulador continua normal.
 
-Join our community of developers creating universal apps.
+---
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Build e publicação
+
+```bash
+npm run build    # expo export --platform web → pasta dist/
+npm run deploy   # publica em GitHub Pages
+```
+
+`app.json` usa `baseUrl: "/SimuladorMotor1"` para o caminho do Pages.
+
+---
+
+## Estrutura principal
+
+```
+app/
+  (tabs)/          # tela principal, serviços FIPE, análise, estilos
+  components/      # Header, PlateLookup, ResultCard, formulários, etc.
+server/            # API Node da consulta por placa
+assets/images/     # logo e ícones
+```
+
+---
+
+## Aviso educacional
+
+Este projeto foi desenvolvido no curso de **Desenvolvimento de Sistemas** (Escola Manoel Ignácio da Silva) com foco em consumo de APIs, UX e análise de dados veiculares. Use apenas como ferramenta de aprendizado e estimativa.
+
+---
+
+## Licença / uso
+
+Projeto educacional. FIPE e Falcon são serviços de terceiros; respeite os termos de cada API.

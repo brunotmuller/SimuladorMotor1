@@ -15,6 +15,7 @@ import {
   View,
 } from "react-native";
 
+import AboutSection from "../components/AboutSection";
 import Header from "../components/Header";
 import PlateLookup from "../components/PlateLookup";
 import ResultCard from "../components/ResultCard";
@@ -581,6 +582,8 @@ export default function HomeScreen() {
         )}
 
         <SavedAnalyses analises={analisesSalvas} abrir={abrirAnalise} excluir={excluirAnalise} />
+
+        <AboutSection />
 
         <View style={styles.footer}>
           <Image
