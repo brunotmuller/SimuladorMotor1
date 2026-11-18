@@ -1,5 +1,5 @@
-import React from "react";
-import { Image, Text, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Animated, Easing, Image, Platform, Text, View } from "react-native";
 
 import { styles } from "../(tabs)/styles/styles";
 
@@ -12,9 +12,48 @@ export default function Header({
   online,
   carregando,
 }: Props) {
+  const logo = useRef(new Animated.Value(0)).current;
+  const hero = useRef(new Animated.Value(0)).current;
+  const tags = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.stagger(120, [
+      Animated.timing(logo, {
+        toValue: 1,
+        duration: 500,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(hero, {
+        toValue: 1,
+        duration: 650,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(tags, {
+        toValue: 1,
+        duration: 500,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [logo, hero, tags]);
+
+  const fadeUp = (v: Animated.Value, dy = 16) => ({
+    opacity: v,
+    transform: [
+      {
+        translateY: v.interpolate({
+          inputRange: [0, 1],
+          outputRange: [dy, 0],
+        }),
+      },
+    ],
+  });
+
   return (
     <>
-      <View style={styles.topo}>
+      <Animated.View style={[styles.topo, fadeUp(logo, 10)]}>
         <Image
           source={require("../../assets/images/torquelab-logo.png")}
           style={styles.logoImagem}
@@ -24,6 +63,19 @@ export default function Header({
 
         <View style={styles.status}>
           <View
+            // @ts-expect-error data attrs para CSS web
+            dataSet={{
+              torqueStatusDot: online ? "on" : "off",
+            }}
+            {...(Platform.OS === "web"
+              ? {
+                  // react-native-web propaga data-*
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  ...({
+                    "data-torque-status-dot": online ? "on" : "off",
+                  } as any),
+                }
+              : {})}
             style={[
               styles.statusBolinha,
               !online && styles.statusOffline,
@@ -38,10 +90,15 @@ export default function Header({
                 : "FIPE offline"}
           </Text>
         </View>
-      </View>
+      </Animated.View>
 
-      <View style={styles.hero}>
-        <View style={styles.heroGlow} />
+      <Animated.View style={[styles.hero, fadeUp(hero, 22)]}>
+        <View
+          {...(Platform.OS === "web"
+            ? ({ "data-torque-hero-glow": "1" } as object)
+            : {})}
+          style={styles.heroGlow}
+        />
         <View style={styles.heroLinha}>
           <View style={styles.heroLinhaVermelha} />
           <Text style={styles.heroEyebrow}>SIMULADOR VEICULAR / ANÁLISE</Text>
@@ -53,12 +110,22 @@ export default function Header({
           Consulte o valor FIPE e veja uma estimativa de consumo, condição e desempenho em poucos passos.
         </Text>
         <View style={styles.heroDivisor} />
-        <View style={styles.heroTags}>
-          <Text style={styles.heroTag}>01  ESCOLHA O CARRO</Text>
-          <Text style={styles.heroTag}>02  CONTE COMO ELE ESTÁ</Text>
-          <Text style={styles.heroTag}>03  VEJA O RESULTADO</Text>
-        </View>
-      </View>
+        <Animated.View style={[styles.heroTags, fadeUp(tags, 12)]}>
+          {["01  ESCOLHA O CARRO", "02  CONTE COMO ELE ESTÁ", "03  VEJA O RESULTADO"].map(
+            (label) => (
+              <Text
+                key={label}
+                {...(Platform.OS === "web"
+                  ? ({ "data-torque-chip": "1" } as object)
+                  : {})}
+                style={styles.heroTag}
+              >
+                {label}
+              </Text>
+            )
+          )}
+        </Animated.View>
+      </Animated.View>
     </>
   );
 }
