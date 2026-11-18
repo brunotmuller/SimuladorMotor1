@@ -17,7 +17,6 @@ import {
 
 import AboutSection from "../components/AboutSection";
 import Header from "../components/Header";
-import PlateLookup from "../components/PlateLookup";
 import ResultCard from "../components/ResultCard";
 import SavedAnalyses from "../components/SavedAnalyses";
 import SeletorModal from "../components/SeletorModal";
@@ -467,9 +466,6 @@ export default function HomeScreen() {
                 )}
             </View>
           )}
-
-          <PlateLookup />
-          <Text style={styles.divisorTexto}>OU ESCOLHA O VEÍCULO MANUALMENTE</Text>
 
           <VehicleSelector
             marca={marca}

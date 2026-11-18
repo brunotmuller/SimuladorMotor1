@@ -21,7 +21,7 @@ export default function AboutSection() {
       <View style={styles.dicaBox}>
         <Text style={styles.dicaTitulo}>PASSO A PASSO</Text>
         <Text style={styles.dicaTexto}>
-          1. Escolha o veículo (marca → modelo → ano) ou use a consulta por placa.{"\n"}
+          1. Escolha o veículo (marca → modelo → ano).{"\n"}
           2. Preencha quilometragem, peso, calibragem, pneus, uso e revisão.{"\n"}
           3. Toque em “Analisar veículo” e confira nota, consumo e alertas.{"\n"}
           4. Use a calculadora de viagem e, se quiser, salve a análise neste dispositivo.
