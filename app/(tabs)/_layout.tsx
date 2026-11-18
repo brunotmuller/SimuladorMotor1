@@ -15,7 +15,6 @@ export default function RootLayout() {
           contentStyle: {
             backgroundColor: "#09090b",
           },
-          animation: "fade",
         }}
       />
     </>

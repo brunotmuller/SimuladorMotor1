@@ -10,11 +10,11 @@
 
 O Torque Lab ajuda estudantes e motoristas a entenderem melhor um veículo em poucos passos:
 
-1. **Escolha o carro** — marca, modelo e ano (Tabela FIPE) ou consulta por placa  
-2. **Informe como ele está** — km, peso, calibragem, pneus, uso e revisão  
-3. **Veja o resultado** — nota estimada, consumo, alertas e calculadora de viagem  
+1. **Escolha o carro** — marca, modelo e ano (Tabela FIPE)
+2. **Informe como ele está** — km, peso, calibragem, pneus, uso e revisão
+3. **Veja o resultado** — nota estimada, consumo, alertas e calculadora de viagem
 
-Os resultados de consumo, saúde e nota são **estimativas educacionais**. Não substituem avaliação mecânica profissional. O valor FIPE vem de base externa oficial.
+Os resultados de consumo, saúde e nota são **estimativas educacionais**. Não substituem avaliação mecânica profissional. O valor FIPE vem de base externa.
 
 ---
 
@@ -24,7 +24,6 @@ Os resultados de consumo, saúde e nota são **estimativas educacionais**. Não 
 |---------|-----------|
 | Consulta FIPE | Marcas, modelos, anos e preço de mercado |
 | Análise veicular | Nota, consumo estimado, saúde e pontos de atenção |
-| Consulta por placa | Dados do veículo via backend + Falcon Data Hub |
 | Calculadora de viagem | Estimativa de custo a partir do consumo |
 | Histórico local | Salva análises no dispositivo (AsyncStorage) |
 
@@ -32,9 +31,8 @@ Os resultados de consumo, saúde e nota são **estimativas educacionais**. Não 
 
 ## Tecnologias
 
-- **Frontend:** Expo · React Native Web · TypeScript · Expo Router  
-- **APIs:** Tabela FIPE (pública) · Falcon Data Hub (placa, via backend)  
-- **Backend:** Node.js (`server/`) — protege o token da API de placa  
+- **Frontend:** Expo · React Native Web · TypeScript · Expo Router
+- **API:** Tabela FIPE (Parallelum / API pública)
 - **Deploy:** GitHub Pages (`gh-pages` + export estático)
 
 ---
@@ -48,17 +46,7 @@ npx expo start
 npm run web
 ```
 
-### Consulta por placa (opcional)
-
-A versão web é estática; o token da Falcon fica só no backend Node.
-
-1. Copie `.env.example` para `.env` e preencha `FALCON_API_TOKEN`  
-2. Terminal 1: `npm run api` (Node 20.19+)  
-3. Terminal 2: `npm run web` — o app chama `http://localhost:3001/api/vehicles`  
-
-Para produção: hospede o backend em HTTPS, configure `ALLOWED_ORIGINS` e defina `EXPO_PUBLIC_PLATE_API_URL` (terminando em `/api/vehicles`) **antes** do build web.
-
-Sem token válido, a consulta por placa avisa que o servidor não está configurado. O restante do simulador continua normal.
+Requisitos: Node.js 20+ recomendado.
 
 ---
 
@@ -69,7 +57,7 @@ npm run build    # expo export --platform web → pasta dist/
 npm run deploy   # publica em GitHub Pages
 ```
 
-`app.json` usa `baseUrl: "/SimuladorMotor1"` para o caminho do Pages.
+O `app.json` usa `baseUrl: "/SimuladorMotor1"` para o caminho do GitHub Pages.
 
 ---
 
@@ -78,8 +66,7 @@ npm run deploy   # publica em GitHub Pages
 ```
 app/
   (tabs)/          # tela principal, serviços FIPE, análise, estilos
-  components/      # Header, PlateLookup, ResultCard, formulários, etc.
-server/            # API Node da consulta por placa
+  components/      # Header, ResultCard, formulários, etc.
 assets/images/     # logo e ícones
 ```
 
@@ -87,10 +74,10 @@ assets/images/     # logo e ícones
 
 ## Aviso educacional
 
-Este projeto foi desenvolvido no curso de **Desenvolvimento de Sistemas** (Escola Manoel Ignácio da Silva) com foco em consumo de APIs, UX e análise de dados veiculares. Use apenas como ferramenta de aprendizado e estimativa.
+Projeto desenvolvido no curso de **Desenvolvimento de Sistemas** (Escola Manoel Ignácio da Silva), com foco em consumo de APIs, UX e análise de dados veiculares. Use apenas como ferramenta de aprendizado e estimativa.
 
 ---
 
 ## Licença / uso
 
-Projeto educacional. FIPE e Falcon são serviços de terceiros; respeite os termos de cada API.
+Projeto educacional. A Tabela FIPE é serviço de terceiros; respeite os termos de uso da API.

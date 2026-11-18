@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, Easing, Image, Platform, Text, View } from "react-native";
+import { Animated, Easing, Image, Text, View } from "react-native";
 
 import { styles } from "../(tabs)/styles/styles";
 
@@ -8,10 +8,7 @@ type Props = {
   carregando: boolean;
 };
 
-export default function Header({
-  online,
-  carregando,
-}: Props) {
+export default function Header({ online, carregando }: Props) {
   const logo = useRef(new Animated.Value(0)).current;
   const hero = useRef(new Animated.Value(0)).current;
   const tags = useRef(new Animated.Value(0)).current;
@@ -51,6 +48,12 @@ export default function Header({
     ],
   });
 
+  const statusLabel = online
+    ? "FIPE online"
+    : carregando
+      ? "Conectando..."
+      : "FIPE offline";
+
   return (
     <>
       <Animated.View style={[styles.topo, fadeUp(logo, 10)]}>
@@ -61,44 +64,19 @@ export default function Header({
           accessibilityLabel="TorqueLab"
         />
 
-        <View style={styles.status}>
+        <View style={styles.status} accessibilityLabel={statusLabel}>
           <View
-            // @ts-expect-error data attrs para CSS web
-            dataSet={{
-              torqueStatusDot: online ? "on" : "off",
-            }}
-            {...(Platform.OS === "web"
-              ? {
-                  // react-native-web propaga data-*
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  ...({
-                    "data-torque-status-dot": online ? "on" : "off",
-                  } as any),
-                }
-              : {})}
             style={[
               styles.statusBolinha,
               !online && styles.statusOffline,
             ]}
           />
-
-          <Text style={styles.statusTexto}>
-            {online
-              ? "FIPE online"
-              : carregando
-                ? "Conectando..."
-                : "FIPE offline"}
-          </Text>
+          <Text style={styles.statusTexto}>{statusLabel}</Text>
         </View>
       </Animated.View>
 
       <Animated.View style={[styles.hero, fadeUp(hero, 22)]}>
-        <View
-          {...(Platform.OS === "web"
-            ? ({ "data-torque-hero-glow": "1" } as object)
-            : {})}
-          style={styles.heroGlow}
-        />
+        <View style={styles.heroGlow} />
         <View style={styles.heroLinha}>
           <View style={styles.heroLinhaVermelha} />
           <Text style={styles.heroEyebrow}>SIMULADOR VEICULAR / ANÁLISE</Text>
@@ -107,23 +85,14 @@ export default function Header({
           Informação completa para você conhecer cada detalhe do veículo
         </Text>
         <Text style={styles.subtitulo}>
-          Consulte o valor FIPE e veja uma estimativa de consumo, condição e desempenho em poucos passos.
+          Consulte o valor FIPE e veja uma estimativa de consumo, condição e
+          desempenho em poucos passos.
         </Text>
         <View style={styles.heroDivisor} />
         <Animated.View style={[styles.heroTags, fadeUp(tags, 12)]}>
-          {["01  ESCOLHA O CARRO", "02  CONTE COMO ELE ESTÁ", "03  VEJA O RESULTADO"].map(
-            (label) => (
-              <Text
-                key={label}
-                {...(Platform.OS === "web"
-                  ? ({ "data-torque-chip": "1" } as object)
-                  : {})}
-                style={styles.heroTag}
-              >
-                {label}
-              </Text>
-            )
-          )}
+          <Text style={styles.heroTag}>01  ESCOLHA O CARRO</Text>
+          <Text style={styles.heroTag}>02  CONTE COMO ELE ESTÁ</Text>
+          <Text style={styles.heroTag}>03  VEJA O RESULTADO</Text>
         </Animated.View>
       </Animated.View>
     </>
