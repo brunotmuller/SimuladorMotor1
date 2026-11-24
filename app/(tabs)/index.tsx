@@ -9,6 +9,7 @@ import {
   Animated,
   Easing,
   Image,
+  Platform,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -16,7 +17,7 @@ import {
 } from "react-native";
 
 import AboutSection from "../components/AboutSection";
-import CarGuide, { ExemploVeiculo } from "../components/CarGuide";
+import CarGuide, { EXEMPLO_PADRAO, ExemploVeiculo } from "../components/CarGuide";
 import Header from "../components/Header";
 import ProgressSteps from "../components/ProgressSteps";
 import ResultCard from "../components/ResultCard";
@@ -65,6 +66,7 @@ export default function HomeScreen() {
 
   const [dadosFipe, setDadosFipe] = useState<DadosFipe | null>(null);
   const [resultado, setResultado] = useState<Resultado | null>(null);
+  const [modoDemonstracao, setModoDemonstracao] = useState(false);
   const [dadosAnalisados, setDadosAnalisados] = useState<DadosAtuais | null>(null);
   const [analisesSalvas, setAnalisesSalvas] = useState<AnaliseSalva[]>([]);
   const [avisoSalvamento, setAvisoSalvamento] = useState("");
@@ -128,6 +130,7 @@ export default function HomeScreen() {
   }
 
   async function selecionarMarca(item: ItemAPI) {
+    setModoDemonstracao(false);
     setMarca(item);
     setModelo(null);
     setAno(null);
@@ -209,6 +212,7 @@ export default function HomeScreen() {
   }
 
   function analisar() {
+    setModoDemonstracao(false);
     const erro = validarDados({
       marca,
       modelo,
@@ -257,7 +261,48 @@ export default function HomeScreen() {
     }, 500);
   }
 
+  function visualizarExemplo() {
+    const fipeExemplo: DadosFipe = {
+      vehicleType: 1,
+      price: "Valor ilustrativo — não consultado na FIPE",
+      brand: "Toyota",
+      model: "Corolla XEi 2.0 Flex",
+      modelYear: 2020,
+      fuel: "Flex",
+      codeFipe: "DEMONSTRACAO",
+      referenceMonth: "Demonstração",
+    };
+    const dadosExemplo: DadosAtuais = {
+      km: Number(EXEMPLO_PADRAO.km),
+      peso: Number(EXEMPLO_PADRAO.peso),
+      calibragem: Number(EXEMPLO_PADRAO.calibragem),
+      pneu: EXEMPLO_PADRAO.tipoPneu,
+      tipoUso: EXEMPLO_PADRAO.tipoUso,
+      condicaoPneu: EXEMPLO_PADRAO.condicaoPneu,
+      mesesUltimaRevisao: Number(EXEMPLO_PADRAO.mesesUltimaRevisao),
+    };
+    setMarca({ code: "demo", name: "Toyota" });
+    setModelo({ code: "demo-corolla", name: "Corolla XEi 2.0 Flex" });
+    setAno({ code: "2020", name: "2020 / Flex" });
+    setDadosFipe(fipeExemplo);
+    setDadosAnalisados(dadosExemplo);
+    setKm(EXEMPLO_PADRAO.km);
+    setPeso(EXEMPLO_PADRAO.peso);
+    setCalibragem(EXEMPLO_PADRAO.calibragem);
+    setMesesUltimaRevisao(EXEMPLO_PADRAO.mesesUltimaRevisao);
+    setTipoPneu(EXEMPLO_PADRAO.tipoPneu);
+    setTipoUso(EXEMPLO_PADRAO.tipoUso);
+    setCondicaoPneu(EXEMPLO_PADRAO.condicaoPneu);
+    setResultado(analisarVeiculo(fipeExemplo, dadosExemplo));
+    setModoDemonstracao(true);
+    setAnaliseSalvaId(null);
+    setAvisoSalvamento("Demonstração: veículo e valor FIPE são ilustrativos; nenhum dado foi consultado ou salvo.");
+    setMensagem("");
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
+  }
+
   function limpar() {
+    setModoDemonstracao(false);
     setMarca(null);
     setModelo(null);
     setAno(null);
@@ -331,6 +376,7 @@ export default function HomeScreen() {
   }
 
   function abrirAnalise(analise: AnaliseSalva) {
+    setModoDemonstracao(false);
     setMarca(analise.selecao.marca);
     setModelo(analise.selecao.modelo);
     setAno(analise.selecao.ano);
@@ -378,6 +424,21 @@ export default function HomeScreen() {
 
           <WelcomeBanner />
 
+          <TouchableOpacity
+            style={styles.demoButton}
+            onPress={visualizarExemplo}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel="Ver análise de exemplo pronta"
+          >
+            <View style={styles.demoButtonTextWrap}>
+              <Text style={styles.demoButtonEyebrow}>DEMONSTRAÇÃO RÁPIDA</Text>
+              <Text style={styles.demoButtonTitle}>Ver análise de exemplo</Text>
+              <Text style={styles.demoButtonDescription}>Abra um resultado completo sem preencher o formulário.</Text>
+            </View>
+            <Text style={styles.demoButtonArrow}>→</Text>
+          </TouchableOpacity>
+
           {mensagem !== "" && (
             <View style={styles.mensagemErro}>
               <Text style={styles.erroTitulo}>Atenção</Text>
@@ -412,9 +473,15 @@ export default function HomeScreen() {
             abrirAno={() => setModalAno(true)}
           />
 
-          <CarGuide onUsarExemplo={aplicarExemplo} />
-
-          <VehicleForm
+          <View
+            style={styles.desktopColumns}
+            {...(Platform.OS === "web" ? ({ "data-torque-columns": "1" } as object) : {})}
+          >
+            <View style={styles.desktopColumn}>
+              <CarGuide onUsarExemplo={aplicarExemplo} />
+            </View>
+            <View style={styles.desktopColumn}>
+              <VehicleForm
             km={km}
             setKm={setKm}
             peso={peso}
@@ -429,7 +496,8 @@ export default function HomeScreen() {
             setTipoUso={setTipoUso}
             condicaoPneu={condicaoPneu}
             setCondicaoPneu={setCondicaoPneu}
-          />
+            />
+          </View>
 
           {!!avisoSalvamento && !resultado && (
             <Text style={styles.textoAjuda}>{avisoSalvamento}</Text>
@@ -465,6 +533,7 @@ export default function HomeScreen() {
               salvar={salvarAnalise}
               avisoSalvamento={avisoSalvamento}
               salvo={!!analiseSalvaId}
+              modoDemonstracao={modoDemonstracao}
               limpar={limpar}
             />
             <TripCalculator consumo={resultado.consumo} />
