@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Easing, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import VehicleModel3D from "./VehicleModel3D";
 
 type Car = {
   id: string; brand: string; model: string; year: string; category: string;
@@ -31,7 +32,6 @@ export default function VehicleHub() {
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [somenteFavoritos, setSomenteFavoritos] = useState(false);
   const [activePanel, setActivePanel] = useState<Panel>(null);
-  const giro = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     let ativo = true;
@@ -45,19 +45,9 @@ export default function VehicleHub() {
     return () => { ativo = false; };
   }, []);
 
-  useEffect(() => {
-    const loop = Animated.loop(Animated.sequence([
-      Animated.timing(giro, { toValue: 1, duration: 3600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      Animated.timing(giro, { toValue: 0, duration: 3600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-    ]));
-    loop.start();
-    return () => loop.stop();
-  }, [giro]);
-
   const carro = CARS.find((item) => item.id === selecionado) ?? CARS[0];
   const carroA = CARS.find((item) => item.id === comparacaoA) ?? CARS[0];
   const carroB = CARS.find((item) => item.id === comparacaoB) ?? CARS[2];
-  const rotacao = giro.interpolate({ inputRange: [0, 1], outputRange: ["-4deg", "4deg"] });
   const categorias = ["Todos", ...Array.from(new Set(CARS.map((item) => item.category)))];
   const filtrados = useMemo(() => CARS.filter((item) => {
     const texto = `${item.brand} ${item.model} ${item.category}`.toLowerCase();
@@ -126,25 +116,12 @@ export default function VehicleHub() {
           <Text style={{ color: colors.pink, fontSize: 10, fontWeight: "800", letterSpacing: 1.2, marginBottom: 7 }}>VEÍCULO EM DESTAQUE</Text>
           <Text style={titulo}>{carro.brand} {carro.model}</Text>
           <Text style={subtitulo}>{carro.year} · {carro.category} · {carro.transmission}</Text>
-          <View style={{ backgroundColor: "#09090c", borderRadius: 17, borderWidth: 1, borderColor: colors.border, height: 185, justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
-            <View style={{ position: "absolute", bottom: 24, width: "76%", height: 22, borderRadius: 100, backgroundColor: "#000", opacity: 0.75, transform: [{ scaleX: 1.1 }] }} />
-            <Animated.View style={{ width: "82%", maxWidth: 390, height: 115, alignItems: "center", justifyContent: "center", transform: [{ perspective: 850 }, { rotateY: rotacao }, { rotateX: "3deg" }] }}>
-              <View style={{ position: "absolute", bottom: 15, width: "92%", height: 55, borderRadius: 35, borderTopLeftRadius: 55, borderTopRightRadius: 48, backgroundColor: "#7f1d2c", borderBottomWidth: 7, borderBottomColor: "#350d16", shadowColor: "#f34a5e", shadowOpacity: 0.5, shadowRadius: 15, shadowOffset: { width: 0, height: -5 }, elevation: 12 }} />
-              <View style={{ position: "absolute", top: 7, width: "52%", height: 55, backgroundColor: "#681724", borderTopLeftRadius: 60, borderTopRightRadius: 50, borderWidth: 2, borderColor: "#c15b69", transform: [{ skewX: "-8deg" }] }} />
-              <View style={{ position: "absolute", top: 15, width: "42%", height: 35, backgroundColor: "#14232c", borderRadius: 12, borderWidth: 2, borderColor: "#82949b", flexDirection: "row", overflow: "hidden" }}>
-                <View style={{ flex: 1, borderRightWidth: 2, borderRightColor: "#84949a", backgroundColor: "#1b303a" }} />
-                <View style={{ flex: 1, backgroundColor: "#101c24" }} />
-              </View>
-              <View style={{ position: "absolute", top: 61, width: "90%", height: 3, backgroundColor: "#f08b96", opacity: 0.8, borderRadius: 5 }} />
-              <View style={{ position: "absolute", bottom: 22, left: "4%", width: 18, height: 10, borderRadius: 7, backgroundColor: "#fff1cf", shadowColor: "#fff", shadowOpacity: 0.9, shadowRadius: 8, elevation: 4 }} />
-              <View style={{ position: "absolute", bottom: 22, right: "4%", width: 17, height: 9, borderRadius: 6, backgroundColor: "#ff3149" }} />
-              {[{ left: "17%" }, { right: "17%" }].map((position, index) => (
-                <View key={index} style={[{ position: "absolute", bottom: 0, width: 37, height: 37, borderRadius: 22, backgroundColor: "#050506", borderWidth: 5, borderColor: "#6c7078", alignItems: "center", justifyContent: "center" }, position]}>
-                  <View style={{ width: 15, height: 15, borderRadius: 10, backgroundColor: "#bfc3c9", borderWidth: 3, borderColor: "#565a60" }} />
-                </View>
-              ))}
-            </Animated.View>
+          <View style={{ backgroundColor: "#09090c", borderRadius: 17, borderWidth: 1, borderColor: colors.border, height: 285, overflow: "hidden" }}>
+            <VehicleModel3D />
           </View>
+          <Text style={{ color: colors.muted, fontSize: 10, lineHeight: 16, marginTop: 8 }}>
+            Modelo 3D demonstrativo: o desenho do veículo não representa necessariamente o modelo selecionado. Arraste para girar e use a roda do mouse ou o gesto de pinça para aproximar.
+          </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 12, gap: 7 }}>
             {[[`${carro.power} cv`, "Potência"], [`${carro.torque} kgfm`, "Torque"], [`${carro.consumption} km/L`, "Consumo ref."]].map(([value, label]) => (
               <View key={label} style={{ flex: 1, minWidth: "28%", backgroundColor: colors.panel, borderRadius: 9, padding: 10 }}>
@@ -154,7 +131,6 @@ export default function VehicleHub() {
             ))}
           </View>
           <Text style={{ color: colors.muted, fontSize: 11, lineHeight: 17, marginTop: 10 }}>{carro.description}</Text>
-          <Text style={{ color: colors.muted, fontSize: 10, marginTop: 8 }}>Ilustração 3D estilizada. Para aparência fotorealista, o próximo passo é integrar um modelo 3D real (GLB/GLTF).</Text>
         </View>
       )}
 
