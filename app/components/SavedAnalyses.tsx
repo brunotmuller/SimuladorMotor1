@@ -48,7 +48,7 @@ export default function SavedAnalyses({
   }
 
   return (
-    <View style={styles.card}>
+    <View nativeID="garage-section" style={styles.card}>
       <View style={styles.sectionKicker}>
         <Text style={styles.sectionKickerText}>SUA GARAGEM</Text>
       </View>
