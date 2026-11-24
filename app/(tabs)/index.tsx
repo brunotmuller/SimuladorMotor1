@@ -457,7 +457,7 @@ export default function HomeScreen() {
             </View>
           )}
 
-          <View {...(Platform.OS === "web" ? ({ "data-torque-section-heading": "vehicle" } as object) : {})}>
+          <View nativeID="vehicle-section" {...(Platform.OS === "web" ? ({ "data-torque-section-heading": "vehicle" } as object) : {})}>
             <Text style={{ color: "#ef7185", fontSize: 10, fontWeight: "900", letterSpacing: 1.8, marginBottom: 7 }}>01 / CONFIGURAÇÃO</Text>
             <Text style={{ color: "#fff", fontSize: 25, fontWeight: "900", letterSpacing: -0.7, marginBottom: 7 }}>Identifique seu veículo</Text>
             <Text style={{ color: "#a99ba1", fontSize: 13, lineHeight: 20, marginBottom: 16 }}>Selecione marca, modelo e ano para consultar a referência FIPE.</Text>
@@ -548,7 +548,7 @@ export default function HomeScreen() {
           </>
         )}
 
-        <View {...(Platform.OS === "web" ? ({ "data-torque-section-heading": "garage" } as object) : {})}>
+        <View nativeID="garage-section" {...(Platform.OS === "web" ? ({ "data-torque-section-heading": "garage" } as object) : {})}>
           <Text style={{ color: "#ef7185", fontSize: 10, fontWeight: "900", letterSpacing: 1.8, marginBottom: 7 }}>03 / COLEÇÃO PESSOAL</Text>
           <Text style={{ color: "#fff", fontSize: 25, fontWeight: "900", letterSpacing: -0.7, marginBottom: 7 }}>Sua garagem</Text>
           <Text style={{ color: "#a99ba1", fontSize: 13, lineHeight: 20, marginBottom: 16 }}>Acesse e organize as análises que você salvou neste dispositivo.</Text>
@@ -560,7 +560,7 @@ export default function HomeScreen() {
           renomear={renomearAnalise}
         />
 
-        <View {...(Platform.OS === "web" ? ({ "data-torque-section-heading": "explore" } as object) : {})}>
+        <View nativeID="explore-section" {...(Platform.OS === "web" ? ({ "data-torque-section-heading": "explore" } as object) : {})}>
           <Text style={{ color: "#ef7185", fontSize: 10, fontWeight: "900", letterSpacing: 1.8, marginBottom: 7 }}>04 / GARAGEM DE REFERÊNCIA</Text>
           <Text style={{ color: "#fff", fontSize: 25, fontWeight: "900", letterSpacing: -0.7, marginBottom: 7 }}>Explore outros veículos</Text>
           <Text style={{ color: "#a99ba1", fontSize: 13, lineHeight: 20, marginBottom: 16 }}>Conheça modelos, compare características e salve seus favoritos.</Text>
