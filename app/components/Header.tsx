@@ -29,10 +29,10 @@ export default function Header({ online, carregando }: Props) {
   }
 
   const navItems = [
-    { label: "Analisar veículo", selector: '#vehicle-section' },
-    { label: "Informar dados", selector: '#data-section' },
-    { label: "Minha garagem", selector: '#garage-section' },
-    { label: "Explorar carros", selector: '#explore-section' },
+    { label: "Analisar veículo", selector: "#vehicle-section" },
+    { label: "Informar dados", selector: "#data-section" },
+    { label: "Minha garagem", selector: "#garage-section" },
+    { label: "Explorar carros", selector: "#explore-section" },
   ];
 
   return (
@@ -43,46 +43,41 @@ export default function Header({ online, carregando }: Props) {
           <View style={[styles.statusBolinha, !online && styles.statusOffline]} />
           <Text style={styles.statusTexto}>{statusLabel}</Text>
         </View>
-        <View
-          style={{ width: "47%", minWidth: 320, height: 350, justifyContent: "center", overflow: "hidden", borderRadius: 22, backgroundColor: "rgba(8,8,11,0.48)", borderWidth: 1, borderColor: "rgba(128,57,72,0.35)" }}
-          {...webAttr({ "data-torque-hero-visual": "1" })}
-        >
-          <VehicleModel3D />
-          <View style={{ position: "absolute", left: 16, bottom: 14, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 7, backgroundColor: "rgba(12,10,13,0.82)", borderWidth: 1, borderColor: "#59303b" }}>
-            <Text style={{ color: "#ff9aa5", fontSize: 9, fontWeight: "800", letterSpacing: 1 }}>EXPERIÊNCIA AUTOMOTIVA 3D</Text>
-          </View>
-        </View>
-        </View>
       </Animated.View>
 
       <Animated.View style={[styles.hero, fadeUp(hero)]} {...webAttr({ "data-torque-hero": "1", "data-torque-card": "1" })}>
         <View style={styles.heroGlow} />
-        <View
-          style={{ flexDirection: "row", alignItems: "center", width: "100%", gap: 18 }}
-          {...webAttr({ "data-torque-hero-layout": "1" })}
-        >
-        <View style={[styles.heroCopy, { flex: 1, minWidth: 0 }]} {...webAttr({ "data-torque-hero-copy": "1" })}>
-          <View style={styles.heroLinha}>
-            <View style={styles.heroLinhaVermelha} />
-            <Text style={styles.heroEyebrow}>TECNOLOGIA E INTELIGÊNCIA AUTOMOTIVA</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", width: "100%", gap: 24 }} {...webAttr({ "data-torque-hero-layout": "1" })}>
+          <View style={[styles.heroCopy, { flex: 1, minWidth: 0 }]} {...webAttr({ "data-torque-hero-copy": "1" })}>
+            <View style={styles.heroLinha}>
+              <View style={styles.heroLinhaVermelha} />
+              <Text style={styles.heroEyebrow}>TECNOLOGIA E INTELIGÊNCIA AUTOMOTIVA</Text>
+            </View>
+            <Text style={styles.titulo}>Conheça seu carro além do painel.</Text>
+            <Text style={styles.subtitulo}>
+              Consulte a FIPE, avalie as condições do veículo e descubra estimativas importantes em uma experiência simples e completa.
+            </Text>
+            <View style={styles.heroTags}>
+              <Text style={styles.heroTag}>CONSULTA FIPE</Text>
+              <Text style={styles.heroTag}>ANÁLISE VEICULAR</Text>
+              <Text style={styles.heroTag}>COMPARAÇÃO</Text>
+            </View>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 25 }} {...webAttr({ "data-torque-nav": "1" })}>
+              {navItems.map((item, index) => (
+                <TouchableOpacity key={item.label} onPress={() => irPara(item.selector)} activeOpacity={0.82}
+                  style={{ paddingHorizontal: 13, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: index === 0 ? "#a94352" : "#493038", backgroundColor: index === 0 ? "#371820" : "rgba(15,12,15,0.78)" }}
+                  accessibilityRole="button">
+                  <Text style={{ color: index === 0 ? "#ff9aa5" : "#e4d6d9", fontSize: 11, fontWeight: "700" }}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-          <Text style={styles.titulo}>Conheça seu carro além do painel.</Text>
-          <Text style={styles.subtitulo}>
-            Consulte a FIPE, avalie as condições do veículo e descubra estimativas importantes em uma experiência simples e completa.
-          </Text>
-          <View style={styles.heroTags}>
-            <Text style={styles.heroTag}>CONSULTA FIPE</Text>
-            <Text style={styles.heroTag}>ANÁLISE VEICULAR</Text>
-            <Text style={styles.heroTag}>COMPARAÇÃO</Text>
-          </View>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 25 }} {...webAttr({ "data-torque-nav": "1" })}>
-            {navItems.map((item, index) => (
-              <TouchableOpacity key={item.label} onPress={() => irPara(item.selector)} activeOpacity={0.82}
-                style={{ paddingHorizontal: 13, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: index === 0 ? "#a94352" : "#493038", backgroundColor: index === 0 ? "#371820" : "rgba(15,12,15,0.78)" }}
-                accessibilityRole="button">
-                <Text style={{ color: index === 0 ? "#ff9aa5" : "#e4d6d9", fontSize: 11, fontWeight: "700" }}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
+
+          <View style={{ width: "47%", minWidth: 300, height: 350, justifyContent: "center", overflow: "hidden", borderRadius: 22, backgroundColor: "rgba(8,8,11,0.48)", borderWidth: 1, borderColor: "rgba(128,57,72,0.35)" }} {...webAttr({ "data-torque-hero-visual": "1" })}>
+            <VehicleModel3D />
+            <View style={{ position: "absolute", left: 16, bottom: 14, paddingHorizontal: 11, paddingVertical: 7, borderRadius: 7, backgroundColor: "rgba(12,10,13,0.82)", borderWidth: 1, borderColor: "#59303b" }}>
+              <Text style={{ color: "#ff9aa5", fontSize: 9, fontWeight: "800", letterSpacing: 1 }}>EXPERIÊNCIA AUTOMOTIVA 3D</Text>
+            </View>
           </View>
         </View>
       </Animated.View>
