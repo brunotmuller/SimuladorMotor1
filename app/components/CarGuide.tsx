@@ -16,6 +16,7 @@ import {
 } from "../(tabs)/types/vehicle";
 
 export type ExemploVeiculo = {
+  id: string;
   km: string;
   peso: string;
   calibragem: string;
@@ -27,24 +28,52 @@ export type ExemploVeiculo = {
   descricao: string;
 };
 
-export const EXEMPLO_PADRAO: ExemploVeiculo = {
-  km: "65000",
-  peso: "1280",
-  calibragem: "32",
-  mesesUltimaRevisao: "6",
-  tipoPneu: "Convencional",
-  tipoUso: "Misto",
-  condicaoPneu: "Bom",
-  titulo: "Hatch popular (exemplo)",
-  descricao:
-    "Valores típicos de um carro de passeio. Use como base se não souber os dados exatos.",
-};
+export const EXEMPLOS: ExemploVeiculo[] = [
+  {
+    id: "hatch",
+    km: "65000",
+    peso: "1280",
+    calibragem: "32",
+    mesesUltimaRevisao: "6",
+    tipoPneu: "Convencional",
+    tipoUso: "Misto",
+    condicaoPneu: "Bom",
+    titulo: "Hatch popular",
+    descricao: "Uso misto, revisão em dia — bom ponto de partida.",
+  },
+  {
+    id: "suv",
+    km: "48000",
+    peso: "1850",
+    calibragem: "34",
+    mesesUltimaRevisao: "4",
+    tipoPneu: "Convencional",
+    tipoUso: "Cidade",
+    condicaoPneu: "Bom",
+    titulo: "SUV / crossover",
+    descricao: "Mais pesado; consumo tende a ser maior na cidade.",
+  },
+  {
+    id: "usado",
+    km: "145000",
+    peso: "1320",
+    calibragem: "28",
+    mesesUltimaRevisao: "18",
+    tipoPneu: "Convencional",
+    tipoUso: "Cidade",
+    condicaoPneu: "Desgastado",
+    titulo: "Usado alto km",
+    descricao: "Muitos km, revisão atrasada e pneus gastos — nota tende a cair.",
+  },
+];
+
+export const EXEMPLO_PADRAO = EXEMPLOS[0];
 
 const PONTOS = [
   {
     id: "km",
     label: "Odômetro",
-    valor: "~ 65.000 km",
+    valor: "30–120 mil km",
     dica: "Quilometragem no painel. Carros usados costumam ter entre 30 mil e 120 mil km.",
     top: 12,
     left: 52,
@@ -52,8 +81,8 @@ const PONTOS = [
   {
     id: "peso",
     label: "Peso",
-    valor: "~ 1.280 kg",
-    dica: "Peso aproximado do veículo. Hatch ~1.100–1.400 kg · SUV ~1.500–2.200 kg.",
+    valor: "1.100–2.200 kg",
+    dica: "Hatch ~1.100–1.400 kg · SUV ~1.500–2.200 kg.",
     top: 36,
     left: 8,
   },
@@ -92,6 +121,7 @@ function Roda({ style }: { style: object }) {
 
 export default function CarGuide({ onUsarExemplo }: Props) {
   const [ativo, setAtivo] = useState<string | null>("peso");
+  const [exemploId, setExemploId] = useState("hatch");
   const girar = useRef(new Animated.Value(0)).current;
   const brilho = useRef(new Animated.Value(0)).current;
 
@@ -147,6 +177,8 @@ export default function CarGuide({ onUsarExemplo }: Props) {
   });
 
   const pontoAtivo = PONTOS.find((p) => p.id === ativo) ?? PONTOS[1];
+  const exemplo =
+    EXEMPLOS.find((e) => e.id === exemploId) ?? EXEMPLO_PADRAO;
 
   return (
     <View
@@ -161,8 +193,8 @@ export default function CarGuide({ onUsarExemplo }: Props) {
 
       <Text style={styles.tituloSecao}>Não sabe os dados?</Text>
       <Text style={styles.descricaoSecao}>
-        Toque nos pontos do carro para ver exemplos. Depois use o botão para
-        preencher o formulário com valores típicos.
+        Toque nos pontos do carro e escolha um perfil de exemplo para preencher
+        o formulário.
       </Text>
 
       <View style={c.stage}>
@@ -173,55 +205,34 @@ export default function CarGuide({ onUsarExemplo }: Props) {
         <Animated.View
           style={[
             c.carroWrap,
-            {
-              transform: [{ perspective: 900 }, { rotateY }],
-            },
+            { transform: [{ perspective: 900 }, { rotateY }] },
           ]}
         >
-          {/* Sombra do carro */}
           <View style={c.sombraCarro} />
-
-          {/* Saia / underbody */}
           <View style={c.saia} />
-
-          {/* Corpo principal */}
           <View style={c.corpo}>
             <View style={c.corpoBrilho} />
             <View style={c.linhaCintura} />
           </View>
-
-          {/* Capô */}
           <View style={c.capo}>
             <View style={c.capoLinha} />
           </View>
-
-          {/* Porta-malas / traseira */}
           <View style={c.traseira} />
-
-          {/* Cabine / teto */}
           <View style={c.teto}>
             <View style={c.tetoBrilho} />
           </View>
-
-          {/* Vidros */}
           <View style={c.vidroFrente} />
           <View style={c.vidroTras} />
           <View style={c.pilar} />
-
-          {/* Farol */}
           <Animated.View style={[c.farol, { opacity: farolOpacidade }]}>
             <View style={c.farolLente} />
           </Animated.View>
           <View style={c.lanterna} />
-
-          {/* Detalhes */}
           <View style={c.macaneta} />
           <View style={c.grade} />
           <View style={c.paraChoqueF} />
           <View style={c.paraChoqueT} />
           <View style={c.retrovisor} />
-
-          {/* Rodas */}
           <Roda style={c.rodaTras} />
           <Roda style={c.rodaFrente} />
 
@@ -261,28 +272,43 @@ export default function CarGuide({ onUsarExemplo }: Props) {
         <Text style={[styles.dicaTexto, { marginTop: 6 }]}>{pontoAtivo.dica}</Text>
       </View>
 
+      <Text style={styles.label}>Escolha um perfil de exemplo</Text>
+      <View style={styles.opcoes}>
+        {EXEMPLOS.map((item) => {
+          const ativoEx = exemploId === item.id;
+          return (
+            <TouchableOpacity
+              key={item.id}
+              style={[styles.opcao, ativoEx && styles.opcaoAtiva]}
+              onPress={() => setExemploId(item.id)}
+            >
+              <Text
+                style={[styles.opcaoTexto, ativoEx && styles.opcaoTextoAtivo]}
+              >
+                {item.titulo}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       <View style={c.resumo}>
-        <Text style={c.resumoTitulo}>{EXEMPLO_PADRAO.titulo}</Text>
-        <Text style={styles.textoAjuda}>{EXEMPLO_PADRAO.descricao}</Text>
+        <Text style={c.resumoTitulo}>{exemplo.titulo}</Text>
+        <Text style={styles.textoAjuda}>{exemplo.descricao}</Text>
         <Text style={c.resumoLinha}>
-          {EXEMPLO_PADRAO.km} km · {EXEMPLO_PADRAO.peso} kg ·{" "}
-          {EXEMPLO_PADRAO.calibragem} PSI · revisão há{" "}
-          {EXEMPLO_PADRAO.mesesUltimaRevisao} meses
+          {exemplo.km} km · {exemplo.peso} kg · {exemplo.calibragem} PSI ·
+          revisão há {exemplo.mesesUltimaRevisao} meses
         </Text>
         <Text style={c.resumoLinha}>
-          Pneu {EXEMPLO_PADRAO.tipoPneu} · {EXEMPLO_PADRAO.condicaoPneu} · uso{" "}
-          {EXEMPLO_PADRAO.tipoUso}
+          Pneu {exemplo.tipoPneu} · {exemplo.condicaoPneu} · uso {exemplo.tipoUso}
         </Text>
       </View>
 
       <TouchableOpacity
         style={styles.botaoSecundario}
         activeOpacity={0.85}
-        onPress={() => onUsarExemplo(EXEMPLO_PADRAO)}
+        onPress={() => onUsarExemplo(exemplo)}
         accessibilityRole="button"
-        {...(Platform.OS === "web"
-          ? ({ "data-torque-magnetic": "1", "data-torque-btn": "1" } as object)
-          : {})}
       >
         <Text style={styles.botaoSecundarioTexto}>
           Preencher formulário com este exemplo
@@ -366,9 +392,6 @@ const c = {
     borderWidth: 1,
     borderColor: "#ff7a8a",
     overflow: "hidden" as const,
-    ...(Platform.OS === "web"
-      ? ({ boxShadow: "0 8px 24px rgba(180,20,40,0.35)" } as object)
-      : {}),
   },
   corpoBrilho: {
     position: "absolute" as const,
@@ -488,9 +511,6 @@ const c = {
     backgroundColor: "#ffe9a0",
     borderWidth: 1,
     borderColor: "#fff3c4",
-    ...(Platform.OS === "web"
-      ? ({ boxShadow: "0 0 12px rgba(255, 220, 100, 0.7)" } as object)
-      : {}),
   },
   farolLente: {
     position: "absolute" as const,
