@@ -15,7 +15,7 @@ const PASSOS = [
 
 export default function ProgressSteps({ passo }: Props) {
   return (
-    <View style={progressStyles.wrap}>
+    <View nativeID="progress-steps" style={progressStyles.wrap}>
       {PASSOS.map((item, index) => {
         const ativo = passo === item.n;
         const feito = passo > item.n;
