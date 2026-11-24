@@ -20,8 +20,29 @@ export default function WebPolish() {
         body {
           background: #09090b !important;
           -webkit-font-smoothing: antialiased;
-          cursor: none;
+          cursor: auto;
         }
+        [data-torque-columns] { display: flex; flex-direction: column; }
+        @media (min-width: 900px) {
+          [data-torque-columns] {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+            align-items: start;
+            gap: 18px;
+          }
+          [data-torque-columns] > * { min-width: 0; }
+        }
+        @media (max-width: 899px) {
+          [data-torque-columns] { display: flex; flex-direction: column; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+        }
+        :focus-visible, [role="button"]:focus-visible, button:focus-visible {
+          outline: 2px solid #ff8793 !important;
+          outline-offset: 3px !important;
+        }
+        #torque-cursor, #torque-trail { display: none !important; }
         @media (pointer: coarse) {
           body { cursor: auto; }
           #torque-cursor, #torque-trail, #torque-fx-canvas { display: none !important; }
@@ -109,7 +130,7 @@ export default function WebPolish() {
         [data-torque-btn] {
           transition: transform 0.2s cubic-bezier(0.22,1,0.36,1),
             box-shadow 0.25s ease, filter 0.2s ease;
-          cursor: none;
+          cursor: pointer;
         }
         [data-torque-btn]:hover {
           box-shadow: 0 14px 36px rgba(217,39,62,0.5), 0 0 0 1px rgba(255,102,119,0.4);
