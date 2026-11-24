@@ -25,6 +25,7 @@ import SavedAnalyses from "../components/SavedAnalyses";
 import SeletorModal from "../components/SeletorModal";
 import TripCalculator from "../components/TripCalculator";
 import VehicleForm from "../components/VehicleForm";
+import VehicleHub from "../components/VehicleHub";
 import VehicleSelector from "../components/VehicleSelector";
 import WelcomeBanner from "../components/WelcomeBanner";
 
@@ -547,6 +548,8 @@ export default function HomeScreen() {
           excluir={excluirAnalise}
           renomear={renomearAnalise}
         />
+
+        <VehicleHub />
 
         <AboutSection />
 
