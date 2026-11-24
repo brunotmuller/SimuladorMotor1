@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 type Car = {
   id: string;
@@ -49,6 +50,7 @@ export default function VehicleHub() {
   const [comparacaoB, setComparacaoB] = useState(CARS[2].id);
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [somenteFavoritos, setSomenteFavoritos] = useState(false);
+  const [activePanel, setActivePanel] = useState<"spotlight" | "catalog" | "compare" | "garage" | null>(null);
   const giro = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -134,6 +136,35 @@ export default function VehicleHub() {
 
   return (
     <View style={{ marginTop: 8 }}>
+      <View style={[secao, { padding: 15 }]}>
+        <Text style={titulo}>Central de veículos</Text>
+        <Text style={subtitulo}>Acesse as ferramentas por aqui. O conteúdo abre somente quando você tocar em um ícone.</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", gap: 9 }}>
+          {[
+            { id: "spotlight", label: "Destaque", icon: "car-sports" },
+            { id: "catalog", label: "Catálogo", icon: "car-multiple" },
+            { id: "compare", label: "Comparar", icon: "compare-horizontal" },
+            { id: "garage", label: "Garagem", icon: "garage" },
+          ].map((item) => {
+            const ativo = activePanel === item.id;
+            return (
+              <TouchableOpacity
+                key={item.id}
+                onPress={() => setActivePanel(ativo ? null : item.id as typeof activePanel)}
+                activeOpacity={0.82}
+                accessibilityRole="button"
+                accessibilityLabel={item.label}
+                accessibilityState={{ selected: ativo }}
+                style={{ flexGrow: 1, minWidth: "22%", alignItems: "center", justifyContent: "center", paddingVertical: 13, paddingHorizontal: 7, borderRadius: 13, borderWidth: 1, borderColor: ativo ? colors.red : colors.border, backgroundColor: ativo ? "#3b1821" : colors.dark }}
+              >
+                <MaterialCommunityIcons name={item.icon as keyof typeof MaterialCommunityIcons.glyphMap} size={25} color={ativo ? colors.pink : "#d7c9cc"} />
+                <Text style={{ color: colors.text, fontSize: 10, fontWeight: "700", marginTop: 6, textAlign: "center" }}>{item.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+      {activePanel === "spotlight" && (
       <View style={secao}>
         <Text style={{ color: colors.pink, fontSize: 10, fontWeight: "800", letterSpacing: 1.3, marginBottom: 8 }}>CENTRAL AUTOMOTIVA</Text>
         <Text style={titulo}>Explore os veículos</Text>
@@ -170,6 +201,7 @@ export default function VehicleHub() {
         </View>
       </View>
 
+      {activePanel === "catalog" && (
       <View style={secao}>
         <Text style={titulo}>Catálogo de veículos</Text>
         <Text style={subtitulo}>Pesquise por marca, modelo ou categoria e selecione um carro para ver a ficha.</Text>
@@ -190,13 +222,16 @@ export default function VehicleHub() {
               <TouchableOpacity onPress={() => alternarFavorito(item.id)} style={{ padding: 8 }} accessibilityRole="button" accessibilityLabel="Alternar favorito">
                 <Text style={{ color: colors.pink, fontSize: 20 }}>{favoritos.includes(item.id) ? "★" : "☆"}</Text>
               </TouchableOpacity>
-            </View>
+            </View>)}
+
+
           </TouchableOpacity>
         ))}
         {filtrados.length === 0 && <Text style={{ color: colors.muted, textAlign: "center", padding: 20 }}>Nenhum veículo encontrado. Tente outra busca ou categoria.</Text>}
         <Text style={{ color: colors.muted, fontSize: 10, lineHeight: 16, marginTop: 8 }}>Os números deste catálogo são referências aproximadas para comparação educativa. Podem variar conforme ano, versão, combustível e condições de medição. Confirme no manual ou ficha oficial do fabricante.</Text>
       </View>
 
+      {activePanel === "compare" && (
       <View style={secao}>
         <Text style={titulo}>Comparador de veículos</Text>
         <Text style={subtitulo}>Compare potência, torque, consumo de referência e peso. Toque nos seletores para alternar os modelos.</Text>
@@ -215,9 +250,12 @@ export default function VehicleHub() {
         <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 12, gap: 8 }}>
           <Text style={{ flex: 1, color: colors.pink, fontSize: 10, fontWeight: "700" }}>A · {carroA.brand} {carroA.model}</Text>
           <Text style={{ flex: 1, color: "#c5b7bb", fontSize: 10, fontWeight: "700", textAlign: "right" }}>B · {carroB.brand} {carroB.model}</Text>
-        </View>
+        </View>)}
+
+
       </View>
 
+      {activePanel === "garage" && (
       <View style={secao}>
         <Text style={titulo}>Minha garagem</Text>
         <Text style={subtitulo}>Seus veículos favoritos ficam salvos neste dispositivo.</Text>
@@ -235,7 +273,9 @@ export default function VehicleHub() {
               <TouchableOpacity onPress={() => { setSelecionado(id); alternarFavorito(id); }} style={botao}>
                 <Text style={{ color: colors.pink, fontSize: 10, fontWeight: "700" }}>Remover</Text>
               </TouchableOpacity>
-            </View>
+            </View>)}
+
+
           );
         })}
       </View>
