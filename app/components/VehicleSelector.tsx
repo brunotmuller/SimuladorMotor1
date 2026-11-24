@@ -116,7 +116,7 @@ export default function VehicleSelector({
   abrirAno,
 }: Props) {
   return (
-    <View style={styles.card}>
+    <View nativeID="vehicle-section" style={styles.card}>
       <View style={styles.sectionKicker}><Text style={styles.sectionKickerText}>01  /  IDENTIFICAÇÃO</Text></View>
       <Text style={styles.tituloSecao}>
         Veículo
