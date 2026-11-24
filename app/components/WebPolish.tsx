@@ -238,16 +238,6 @@ export default function WebPolish() {
         }
         [data-torque-status-dot="on"] { animation: torque-pulse 2.2s ease-in-out infinite; }
         [data-torque-status-dot="off"] { animation: torque-pulse-off 2.2s ease-in-out infinite; }
-
-        body.torque-no-motion *, body.torque-no-motion *::before, body.torque-no-motion *::after {
-          animation: none !important; transition: none !important; scroll-behavior: auto !important;
-        }
-        body.torque-light { background: #f3f1f2 !important; color: #21171b !important; }
-        body.torque-light [style*="#09090b"], body.torque-light [style*="#09090c"], body.torque-light [style*="#121014"], body.torque-light [style*="#0b0a0c"] {
-          background-color: #fff !important; color: #21171b !important;
-        }
-        body.torque-light [style*="color: rgb(255, 255, 255)"], body.torque-light [style*="color: #fff"] { color: #21171b !important; }
-        body.torque-light [style*="#bdaeb1"], body.torque-light [style*="#d7c9cc"] { color: #65565b !important; }
       `;
       document.head.appendChild(style);
     }
