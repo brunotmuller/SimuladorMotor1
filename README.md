@@ -14,7 +14,7 @@ O Torque Lab ajuda estudantes e motoristas a entenderem melhor um veículo em po
 2. **Informe como ele está** — km, peso, calibragem, pneus, uso e revisão
 3. **Veja o resultado** — nota estimada, consumo, alertas e calculadora de viagem
 
-Os resultados de consumo, saúde e nota são **estimativas educacionais**. Não substituem avaliação mecânica profissional. O valor FIPE vem de base externa.
+Os resultados de consumo, saúde e nota são **estimativas educacionais**. Os dados do catálogo são referências aproximadas e podem variar por ano, versão e mercado; confirme sempre a ficha oficial do fabricante. Não substitui avaliação mecânica profissional. O valor FIPE vem de base externa.
 
 ---
 
@@ -26,6 +26,10 @@ Os resultados de consumo, saúde e nota são **estimativas educacionais**. Não 
 | Análise veicular | Nota, consumo estimado, saúde e pontos de atenção |
 | Calculadora de viagem | Estimativa de custo a partir do consumo |
 | Histórico local | Salva análises no dispositivo (AsyncStorage) |
+| Catálogo de veículos | Fichas técnicas de referência para modelos selecionados |
+| Comparador | Comparação visual de potência, torque, consumo e peso |
+| Garagem | Favoritos salvos no dispositivo |
+| Painel de veículos | Destaque visual com dados resumidos do modelo selecionado |
 
 ---
 
