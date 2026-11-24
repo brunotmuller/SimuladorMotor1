@@ -30,16 +30,16 @@ export type ExemploVeiculo = {
 
 export const EXEMPLOS: ExemploVeiculo[] = [
   {
-    id: "hatch",
+    id: "comum",
     km: "65000",
     peso: "1280",
     calibragem: "32",
     mesesUltimaRevisao: "6",
-    tipoPneu: "Convencional",
+    tipoPneu: "Comum",
     tipoUso: "Misto",
     condicaoPneu: "Bom",
-    titulo: "Hatch popular",
-    descricao: "Uso misto, revisão em dia — bom ponto de partida.",
+    titulo: "Carro comum",
+    descricao: "Carro de passeio do dia a dia, com revisão em dia.",
   },
   {
     id: "suv",
@@ -47,11 +47,11 @@ export const EXEMPLOS: ExemploVeiculo[] = [
     peso: "1850",
     calibragem: "34",
     mesesUltimaRevisao: "4",
-    tipoPneu: "Convencional",
+    tipoPneu: "Comum",
     tipoUso: "Cidade",
     condicaoPneu: "Bom",
-    titulo: "SUV / crossover",
-    descricao: "Mais pesado; consumo tende a ser maior na cidade.",
+    titulo: "SUV / carro maior",
+    descricao: "Mais pesado; na cidade o consumo costuma ser maior.",
   },
   {
     id: "usado",
@@ -59,11 +59,11 @@ export const EXEMPLOS: ExemploVeiculo[] = [
     peso: "1320",
     calibragem: "28",
     mesesUltimaRevisao: "18",
-    tipoPneu: "Convencional",
+    tipoPneu: "Comum",
     tipoUso: "Cidade",
     condicaoPneu: "Desgastado",
-    titulo: "Usado alto km",
-    descricao: "Muitos km, revisão atrasada e pneus gastos — nota tende a cair.",
+    titulo: "Carro bem usado",
+    descricao: "Muitos km, revisão atrasada e pneus gastos — a nota tende a cair.",
   },
 ];
 
@@ -82,7 +82,7 @@ const PONTOS = [
     id: "peso",
     label: "Peso",
     valor: "1.100–2.200 kg",
-    dica: "Hatch ~1.100–1.400 kg · SUV ~1.500–2.200 kg.",
+    dica: "Carro pequeno ~1.100–1.400 kg · SUV ~1.500–2.200 kg.",
     top: 36,
     left: 8,
   },
@@ -121,7 +121,7 @@ function Roda({ style }: { style: object }) {
 
 export default function CarGuide({ onUsarExemplo }: Props) {
   const [ativo, setAtivo] = useState<string | null>("peso");
-  const [exemploId, setExemploId] = useState("hatch");
+  const [exemploId, setExemploId] = useState("comum");
   const girar = useRef(new Animated.Value(0)).current;
   const brilho = useRef(new Animated.Value(0)).current;
 
@@ -177,8 +177,7 @@ export default function CarGuide({ onUsarExemplo }: Props) {
   });
 
   const pontoAtivo = PONTOS.find((p) => p.id === ativo) ?? PONTOS[1];
-  const exemplo =
-    EXEMPLOS.find((e) => e.id === exemploId) ?? EXEMPLO_PADRAO;
+  const exemplo = EXEMPLOS.find((e) => e.id === exemploId) ?? EXEMPLO_PADRAO;
 
   return (
     <View

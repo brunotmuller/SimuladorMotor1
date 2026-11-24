@@ -11,6 +11,9 @@ import { styles } from "../(tabs)/styles/styles";
 
 import {
   CONDICOES_PNEU,
+  EXPLICACAO_CONDICAO,
+  EXPLICACAO_PNEU,
+  EXPLICACAO_USO,
   TIPOS_PNEU,
   TIPOS_USO,
 } from "../(tabs)/constants/vehicleOptions";
@@ -26,29 +29,23 @@ import { apenasNumero } from "../(tabs)/utils/validators";
 type Props = {
   km: string;
   setKm: (value: string) => void;
-
   peso: string;
   setPeso: (value: string) => void;
-
   calibragem: string;
   setCalibragem: (value: string) => void;
-
   mesesUltimaRevisao: string;
   setMesesUltimaRevisao: (value: string) => void;
-
   tipoPneu: TipoPneu | null;
   setTipoPneu: (value: TipoPneu) => void;
-
   tipoUso: TipoUso | null;
   setTipoUso: (value: TipoUso) => void;
-
   condicaoPneu: CondicaoPneu | null;
   setCondicaoPneu: (value: CondicaoPneu) => void;
 };
 
 const DICAS: Record<string, string> = {
   km: "Veja no painel (odômetro). Usados comuns: 30 mil a 120 mil km.",
-  peso: "Hatch ~1.100–1.400 kg · Sedã ~1.300–1.600 kg · SUV ~1.500–2.200 kg.",
+  peso: "Carro pequeno ~1.100–1.400 kg · SUV ~1.500–2.200 kg.",
   calibragem: "Etiqueta na porta do motorista ou manual. Faixa comum: 30–35 PSI.",
   revisao: "Quantos meses se passaram desde a última revisão (não o ano).",
 };
@@ -58,6 +55,7 @@ type OpcoesProps<T extends string> = {
   itens: readonly T[];
   selecionado: T | null;
   selecionar: (value: T) => void;
+  explicacoes?: Record<T, string>;
 };
 
 function Opcoes<T extends string>({
@@ -65,6 +63,7 @@ function Opcoes<T extends string>({
   itens,
   selecionado,
   selecionar,
+  explicacoes,
 }: OpcoesProps<T>) {
   return (
     <>
@@ -88,6 +87,11 @@ function Opcoes<T extends string>({
           );
         })}
       </View>
+      {selecionado && explicacoes?.[selecionado] ? (
+        <Text style={[styles.textoAjuda, { marginTop: 0, marginBottom: 14 }]}>
+          {explicacoes[selecionado]}
+        </Text>
+      ) : null}
     </>
   );
 }
@@ -117,8 +121,7 @@ export default function VehicleForm({
       </View>
       <Text style={styles.tituloSecao}>Dados atuais</Text>
       <Text style={styles.descricaoSecao}>
-        Preencha os dados do carro. Toque em um campo para ver uma dica de
-        referência.
+        Preencha os dados do carro. Toque em um campo para ver uma dica.
       </Text>
 
       {dicaAtiva && DICAS[dicaAtiva] ? (
@@ -130,7 +133,7 @@ export default function VehicleForm({
         <View style={styles.dicaBox}>
           <Text style={styles.dicaTitulo}>DICA RÁPIDA</Text>
           <Text style={styles.dicaTexto}>
-            Não sabe os números? Use o guia do carro acima e o botão de exemplo.
+            Não sabe os números? Use o guia do carro acima e um exemplo pronto.
           </Text>
         </View>
       )}
@@ -188,6 +191,7 @@ export default function VehicleForm({
         itens={TIPOS_PNEU}
         selecionado={tipoPneu}
         selecionar={setTipoPneu}
+        explicacoes={EXPLICACAO_PNEU}
       />
 
       <Opcoes
@@ -195,6 +199,7 @@ export default function VehicleForm({
         itens={CONDICOES_PNEU}
         selecionado={condicaoPneu}
         selecionar={setCondicaoPneu}
+        explicacoes={EXPLICACAO_CONDICAO}
       />
 
       <Opcoes
@@ -202,6 +207,7 @@ export default function VehicleForm({
         itens={TIPOS_USO}
         selecionado={tipoUso}
         selecionar={setTipoUso}
+        explicacoes={EXPLICACAO_USO}
       />
     </View>
   );
