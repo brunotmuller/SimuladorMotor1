@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -121,6 +121,9 @@ export default function VehicleHub() {
           </View>
           <Text style={{ color: colors.muted, fontSize: 10, lineHeight: 16, marginTop: 8 }}>
             Modelo 3D demonstrativo: o desenho do veículo não representa necessariamente o modelo selecionado. Arraste para girar e use a roda do mouse ou o gesto de pinça para aproximar.
+          </Text>
+          <Text style={{ color: "#8f7d82", fontSize: 9, lineHeight: 14, marginTop: 4 }}>
+            Modelo: Executive Sedan, por vinish.dev · Licença CC BY 4.0 · Não representa uma marca específica.
           </Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 12, gap: 7 }}>
             {[[`${carro.power} cv`, "Potência"], [`${carro.torque} kgfm`, "Torque"], [`${carro.consumption} km/L`, "Consumo ref."]].map(([value, label]) => (
