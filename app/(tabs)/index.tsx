@@ -16,6 +16,7 @@ import {
 } from "react-native";
 
 import AboutSection from "../components/AboutSection";
+import CarGuide, { ExemploVeiculo } from "../components/CarGuide";
 import Header from "../components/Header";
 import ResultCard from "../components/ResultCard";
 import SavedAnalyses from "../components/SavedAnalyses";
@@ -266,6 +267,18 @@ export default function HomeScreen() {
     }
   }
 
+  function aplicarExemplo(exemplo: ExemploVeiculo) {
+    setKm(exemplo.km);
+    setPeso(exemplo.peso);
+    setCalibragem(exemplo.calibragem);
+    setMesesUltimaRevisao(exemplo.mesesUltimaRevisao);
+    setTipoPneu(exemplo.tipoPneu);
+    setTipoUso(exemplo.tipoUso);
+    setCondicaoPneu(exemplo.condicaoPneu);
+    setMensagem("");
+    setAvisoSalvamento("Formulário preenchido com valores de exemplo. Ajuste se quiser.");
+  }
+
   function analisar() {
     const erro = validarDados({
       marca,
@@ -504,6 +517,8 @@ export default function HomeScreen() {
             }
           />
 
+          <CarGuide onUsarExemplo={aplicarExemplo} />
+
           <VehicleForm
             km={km}
             setKm={setKm}
@@ -526,6 +541,10 @@ export default function HomeScreen() {
               setCondicaoPneu
             }
           />
+
+          {!!avisoSalvamento && !resultado && (
+            <Text style={styles.textoAjuda}>{avisoSalvamento}</Text>
+          )}
 
           <TouchableOpacity
             style={styles.botao}
