@@ -496,7 +496,8 @@ export default function HomeScreen() {
             setTipoUso={setTipoUso}
             condicaoPneu={condicaoPneu}
             setCondicaoPneu={setCondicaoPneu}
-            />
+              />
+            </View>
           </View>
 
           {!!avisoSalvamento && !resultado && (
