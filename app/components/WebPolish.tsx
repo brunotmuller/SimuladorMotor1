@@ -348,6 +348,19 @@ export default function WebPolish() {
         [data-torque-status-dot="on"] { animation: torque-pulse 2.2s ease-in-out infinite; }
         [data-torque-status-dot="off"] { animation: torque-pulse-off 2.2s ease-in-out infinite; }
 
+        [data-torque-section-heading] {
+          margin: 42px 0 4px;
+          padding-left: 2px;
+          position: relative;
+        }
+        [data-torque-section-heading="vehicle"] { margin-top: 28px; }
+        [data-torque-section-heading="garage"] { margin-top: 48px; }
+        [data-torque-section-heading="explore"] { margin-top: 48px; }
+        [data-torque-section-heading="about"] { margin-top: 48px; }
+        [data-torque-section-heading] > * { text-shadow: 0 2px 16px rgba(0,0,0,.25); }
+        [data-torque-hero-panel] > div { position: relative; }
+        [data-torque-hero-panel] > div:first-child { padding-bottom: 3px; }
+        [data-torque-progress] { border-color: #33262e !important; }
         /* TORQUELAB — redesign editorial */
         body {
           background:
