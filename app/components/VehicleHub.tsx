@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Easing, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Animated, Easing, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -99,7 +99,7 @@ export default function VehicleHub() {
   }
 
   return (
-    <View style={{ marginTop: 8 }} {...(Platform.OS === "web" ? ({ "data-torque-vehicle-hub": "1" } as object) : {})}>
+    <View style={{ marginTop: 8 }}>
       <View style={[secao, { padding: 15 }]}>
         <Text style={titulo}>Central de veículos</Text>
         <Text style={subtitulo}>As ferramentas ficam organizadas aqui. Toque em um ícone para abrir e toque novamente para fechar.</Text>
