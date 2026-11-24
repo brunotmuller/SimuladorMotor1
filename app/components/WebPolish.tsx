@@ -360,7 +360,7 @@ export default function WebPolish() {
         [data-torque-section-heading] > * { text-shadow: 0 2px 16px rgba(0,0,0,.25); }
         [data-torque-hero-panel] > div { position: relative; }
         [data-torque-hero-panel] > div:first-child { padding-bottom: 3px; }
-        [data-torque-progress] { border-color: #33262e !important; }
+        #progress-steps { border-color: #33262e !important; box-shadow: 0 12px 34px rgba(0,0,0,.2); }
         /* TORQUELAB — redesign editorial */
         body {
           background:
