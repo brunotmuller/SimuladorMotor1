@@ -3,6 +3,7 @@ import { DadosAtuais, DadosFipe, ItemAPI, Resultado } from "./vehicle";
 export type AnaliseSalva = {
   id: string;
   salvaEm: string;
+  nome?: string;
   fipe: DadosFipe;
   dados: DadosAtuais;
   resultado: Resultado;

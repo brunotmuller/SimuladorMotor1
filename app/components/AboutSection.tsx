@@ -22,9 +22,27 @@ export default function AboutSection() {
         <Text style={styles.dicaTitulo}>PASSO A PASSO</Text>
         <Text style={styles.dicaTexto}>
           1. Escolha o veículo (marca → modelo → ano).{"\n"}
-          2. Preencha quilometragem, peso, calibragem, pneus, uso e revisão.{"\n"}
-          3. Toque em “Analisar veículo” e confira nota, consumo e alertas.{"\n"}
-          4. Use a calculadora de viagem e, se quiser, salve a análise neste dispositivo.
+          2. Preencha os dados ou use um exemplo do guia.{"\n"}
+          3. Toque em “Analisar veículo”.{"\n"}
+          4. Confira nota, alertas, viagem e salve se quiser.
+        </Text>
+      </View>
+
+      <View style={styles.dicaBox}>
+        <Text style={styles.dicaTitulo}>COMO A NOTA É CALCULADA</Text>
+        <Text style={styles.dicaTexto}>
+          A nota começa em 100. Fatores como quilometragem alta, peso elevado,
+          calibragem fora da faixa genérica, pneus desgastados e revisão atrasada
+          reduzem pontos. O consumo estimado considera combustível FIPE, peso,
+          pneus e tipo de uso. Tudo é educativo e aproximado.
+        </Text>
+      </View>
+
+      <View style={styles.dicaBox}>
+        <Text style={styles.dicaTitulo}>TECNOLOGIAS</Text>
+        <Text style={styles.dicaTexto}>
+          Expo · React Native Web · TypeScript · API FIPE (Parallelum) ·
+          AsyncStorage · GitHub Pages
         </Text>
       </View>
 

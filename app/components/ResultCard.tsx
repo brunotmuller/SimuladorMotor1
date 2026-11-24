@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 
 import {
+  Platform,
+  Share,
   Text,
   TouchableOpacity,
   View,
@@ -25,6 +27,39 @@ type Props = {
   limpar: () => void;
 };
 
+function montarRelatorio(
+  resultado: Resultado,
+  dadosFipe: DadosFipe,
+  dadosAtuais: DadosAtuais
+) {
+  const linhas = [
+    "Torque Lab — Relatório educacional",
+    "================================",
+    `${dadosFipe.brand} ${dadosFipe.model} (${dadosFipe.modelYear})`,
+    `Combustível: ${dadosFipe.fuel}`,
+    `Valor FIPE: ${dadosFipe.price}`,
+    "",
+    `Nota: ${resultado.nota}/100 (${resultado.classificacao})`,
+    `Consumo estimado: ${resultado.consumo} km/L`,
+    `Saúde estimada: ${resultado.saude}%`,
+    `Desempenho: ${resultado.desempenho}`,
+    `Categoria: ${resultado.categoria}`,
+    "",
+    `Km: ${dadosAtuais.km} | Peso: ${dadosAtuais.peso} kg | PSI: ${dadosAtuais.calibragem}`,
+    `Pneu: ${dadosAtuais.pneu} (${dadosAtuais.condicaoPneu}) | Uso: ${dadosAtuais.tipoUso}`,
+    `Meses desde revisão: ${dadosAtuais.mesesUltimaRevisao}`,
+  ];
+  if (resultado.alertas.length) {
+    linhas.push("", "Pontos de atenção:");
+    resultado.alertas.forEach((a) => linhas.push(`- ${a}`));
+  }
+  linhas.push(
+    "",
+    "Aviso: estimativas educacionais. Não substituem avaliação mecânica."
+  );
+  return linhas.join("\n");
+}
+
 export default function ResultCard({
   resultado,
   dadosFipe,
@@ -34,167 +69,123 @@ export default function ResultCard({
   salvo,
   limpar,
 }: Props) {
+  const [avisoCopia, setAvisoCopia] = useState("");
+
   const larguraNota = `${Math.max(
     0,
     Math.min(resultado.nota, 100)
   )}%` as `${number}%`;
+
   const cenarios = [
-    ...(dadosAtuais.condicaoPneu === "Desgastado" ? [{
-      titulo: "Pneus em bom estado",
-      dados: { ...dadosAtuais, condicaoPneu: "Bom" as const },
-    }] : []),
-    ...(dadosAtuais.mesesUltimaRevisao >= 12 ? [{
-      titulo: "Revisão em dia",
-      dados: { ...dadosAtuais, mesesUltimaRevisao: 0 },
-    }] : []),
-  ].map((cenario) => ({ ...cenario, nota: analisarVeiculo(dadosFipe, cenario.dados).nota }));
+    ...(dadosAtuais.condicaoPneu === "Desgastado"
+      ? [
+          {
+            titulo: "Pneus em bom estado",
+            dados: { ...dadosAtuais, condicaoPneu: "Bom" as const },
+          },
+        ]
+      : []),
+    ...(dadosAtuais.mesesUltimaRevisao >= 12
+      ? [
+          {
+            titulo: "Revisão em dia",
+            dados: { ...dadosAtuais, mesesUltimaRevisao: 0 },
+          },
+        ]
+      : []),
+  ].map((cenario) => ({
+    ...cenario,
+    nota: analisarVeiculo(dadosFipe, cenario.dados).nota,
+  }));
+
+  async function copiarOuCompartilhar() {
+    const texto = montarRelatorio(resultado, dadosFipe, dadosAtuais);
+    try {
+      if (Platform.OS === "web" && typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(texto);
+        setAvisoCopia("Relatório copiado. Cole em um documento ou e-mail.");
+        return;
+      }
+      await Share.share({ message: texto });
+      setAvisoCopia("Relatório enviado para compartilhamento.");
+    } catch {
+      setAvisoCopia("Não foi possível copiar/compartilhar neste dispositivo.");
+    }
+  }
 
   return (
     <View style={styles.resultado}>
-      <View style={styles.sectionKicker}><Text style={styles.sectionKickerText}>03  /  SEU RESULTADO</Text></View>
-      <Text style={styles.resultadoPequeno}>
-        RESULTADO DA ANÁLISE
-      </Text>
+      <View style={styles.sectionKicker}>
+        <Text style={styles.sectionKickerText}>03  /  SEU RESULTADO</Text>
+      </View>
+      <Text style={styles.resultadoPequeno}>RESULTADO DA ANÁLISE</Text>
 
-      <Text style={styles.resultadoTitulo}>
-        {dadosFipe.brand}
-      </Text>
-
-      <Text style={styles.nomeCarro}>
-        {dadosFipe.model}
-      </Text>
-
+      <Text style={styles.resultadoTitulo}>{dadosFipe.brand}</Text>
+      <Text style={styles.nomeCarro}>{dadosFipe.model}</Text>
       <Text style={styles.infoCarro}>
         {dadosFipe.modelYear} • {dadosFipe.fuel}
       </Text>
 
       <View style={styles.valorFipe}>
-        <Text style={styles.valorFipeLabel}>
-          VALOR FIPE
-        </Text>
-
-        <Text style={styles.valorFipeNumero}>
-          {dadosFipe.price}
-        </Text>
+        <Text style={styles.valorFipeLabel}>VALOR FIPE</Text>
+        <Text style={styles.valorFipeNumero}>{dadosFipe.price}</Text>
       </View>
 
       <View style={styles.notaArea}>
         <View style={styles.notaTopo}>
           <View>
-            <Text style={styles.notaLabel}>
-              NOTA GERAL
-            </Text>
-
+            <Text style={styles.notaLabel}>NOTA GERAL</Text>
             <Text style={styles.nota}>
               {resultado.nota}
-              <Text style={styles.notaDe}>
-                /100
-              </Text>
+              <Text style={styles.notaDe}>/100</Text>
             </Text>
           </View>
-
           <View style={styles.classificacaoBox}>
-            <Text style={styles.classificacao}>
-              {resultado.classificacao}
-            </Text>
+            <Text style={styles.classificacao}>{resultado.classificacao}</Text>
           </View>
         </View>
-
         <View style={styles.barraFundo}>
-          <View
-            style={[
-              styles.barra,
-              {
-                width: larguraNota,
-              },
-            ]}
-          />
+          <View style={[styles.barra, { width: larguraNota }]} />
         </View>
       </View>
 
       <View style={styles.metricas}>
-        <View
-          style={[
-            styles.metrica,
-            styles.metricaEsquerda,
-          ]}
-        >
-          <Text style={styles.metricaLabel}>
-            Consumo estimado
-          </Text>
-
-          <Text style={styles.metricaValor}>
-            {resultado.consumo} km/L
-          </Text>
+        <View style={[styles.metrica, styles.metricaEsquerda]}>
+          <Text style={styles.metricaLabel}>Consumo estimado</Text>
+          <Text style={styles.metricaValor}>{resultado.consumo} km/L</Text>
         </View>
-
         <View style={styles.metrica}>
-          <Text style={styles.metricaLabel}>
-            Saúde estimada
-          </Text>
-
-          <Text style={styles.metricaValor}>
-            {resultado.saude}%
-          </Text>
+          <Text style={styles.metricaLabel}>Saúde estimada</Text>
+          <Text style={styles.metricaValor}>{resultado.saude}%</Text>
         </View>
-
-        <View
-          style={[
-            styles.metrica,
-            styles.metricaEsquerda,
-            styles.metricaBaixo,
-          ]}
-        >
-          <Text style={styles.metricaLabel}>
-            Desempenho
-          </Text>
-
-          <Text style={styles.metricaValor}>
-            {resultado.desempenho}
-          </Text>
+        <View style={[styles.metrica, styles.metricaEsquerda, styles.metricaBaixo]}>
+          <Text style={styles.metricaLabel}>Desempenho</Text>
+          <Text style={styles.metricaValor}>{resultado.desempenho}</Text>
         </View>
-
-        <View
-          style={[
-            styles.metrica,
-            styles.metricaBaixo,
-          ]}
-        >
-          <Text style={styles.metricaLabel}>
-            Categoria
-          </Text>
-
-          <Text style={styles.metricaValor}>
-            {resultado.categoria}
-          </Text>
+        <View style={[styles.metrica, styles.metricaBaixo]}>
+          <Text style={styles.metricaLabel}>Categoria</Text>
+          <Text style={styles.metricaValor}>{resultado.categoria}</Text>
         </View>
       </View>
 
       {resultado.ajustes.length > 0 && (
         <View style={styles.detalhesNota}>
-          <Text style={styles.detalhesTitulo}>
-            Como a nota foi calculada
+          <Text style={styles.detalhesTitulo}>Como a nota foi calculada</Text>
+          <Text style={styles.simulacaoDetalhe}>
+            A nota começa em 100. Os fatores abaixo reduzem esse valor conforme
+            os dados informados.
           </Text>
-          <Text style={styles.simulacaoDetalhe}>A nota começa em 100. Os fatores abaixo reduzem esse valor conforme os dados informados.</Text>
-
-          {resultado.ajustes.map(
-            (ajuste, index) => (
-              <View
-                key={`${ajuste.descricao}-${index}`}
-                style={styles.detalheLinha}
-              >
-                <Text style={styles.detalheTexto}>
-                  {ajuste.descricao}
-                </Text>
-
-                <Text style={styles.detalhePontos}>
-                  {ajuste.pontos > 0
-                    ? `+${ajuste.pontos}`
-                    : ajuste.pontos}
-                </Text>
-              </View>
-            )
-          )}
+          {resultado.ajustes.map((ajuste, index) => (
+            <View
+              key={`${ajuste.descricao}-${index}`}
+              style={styles.detalheLinha}
+            >
+              <Text style={styles.detalheTexto}>{ajuste.descricao}</Text>
+              <Text style={styles.detalhePontos}>
+                {ajuste.pontos > 0 ? `+${ajuste.pontos}` : ajuste.pontos}
+              </Text>
+            </View>
+          ))}
         </View>
       )}
 
@@ -207,66 +198,72 @@ export default function ResultCard({
               <Text style={styles.detalhePontos}>{cenario.nota}/100</Text>
             </View>
           ))}
-          <Text style={styles.textoAjuda}>Simulação isolada: cada cenário altera apenas o item indicado.</Text>
+          <Text style={styles.textoAjuda}>
+            Simulação isolada: cada cenário altera apenas o item indicado.
+          </Text>
         </View>
       )}
 
       {resultado.alertas.length > 0 && (
         <View style={styles.alertas}>
-          <Text style={styles.alertasTitulo}>
-            Pontos de atenção
-          </Text>
-
-          {resultado.alertas.map(
-            (alerta, index) => (
-              <View
-                key={`${alerta}-${index}`}
-                style={styles.alertaLinha}
-              >
-                <View style={styles.alertaBolinha} />
-
-                <Text style={styles.alertaTexto}>
-                  {alerta}
-                </Text>
-              </View>
-            )
-          )}
+          <Text style={styles.alertasTitulo}>Pontos de atenção</Text>
+          {resultado.alertas.map((alerta, index) => (
+            <View key={`${alerta}-${index}`} style={styles.alertaLinha}>
+              <View style={styles.alertaBolinha} />
+              <Text style={styles.alertaTexto}>{alerta}</Text>
+            </View>
+          ))}
         </View>
       )}
 
       <View style={styles.sustentabilidade}>
-        <Text style={styles.sustentabilidadeTitulo}>
-          Uso consciente
-        </Text>
-
+        <Text style={styles.sustentabilidadeTitulo}>Uso consciente</Text>
         <Text style={styles.sustentabilidadeTexto}>
-          Manter os pneus calibrados e realizar
-          revisões periódicas pode ajudar a evitar
-          consumo desnecessário de combustível.
+          Manter os pneus calibrados e realizar revisões periódicas pode ajudar
+          a evitar consumo desnecessário de combustível.
         </Text>
       </View>
 
       <Text style={styles.aviso}>
-        O valor FIPE é consultado em uma base
-        externa. Consumo, saúde, desempenho e nota
-        são estimativas educacionais do TorqueLab e
-        não substituem uma avaliação mecânica.
+        O valor FIPE é consultado em uma base externa. Consumo, saúde,
+        desempenho e nota são estimativas educacionais do TorqueLab e não
+        substituem uma avaliação mecânica.
       </Text>
 
-      <TouchableOpacity style={[styles.botao, salvo && styles.desativado]} activeOpacity={0.8} onPress={salvar} disabled={salvo} accessibilityRole="button">
-        <Text style={styles.botaoTexto}>{salvo ? "Análise salva" : "Salvar análise"}</Text>
+      <TouchableOpacity
+        style={[styles.botao, salvo && styles.desativado]}
+        activeOpacity={0.8}
+        onPress={salvar}
+        disabled={salvo}
+        accessibilityRole="button"
+      >
+        <Text style={styles.botaoTexto}>
+          {salvo ? "Análise salva" : "Salvar análise"}
+        </Text>
         <Text style={styles.botaoSeta}>{salvo ? "✓" : "+"}</Text>
       </TouchableOpacity>
-      {!!avisoSalvamento && <Text style={styles.textoAjuda}>{avisoSalvamento}</Text>}
+      {!!avisoSalvamento && (
+        <Text style={styles.textoAjuda}>{avisoSalvamento}</Text>
+      )}
+
+      <TouchableOpacity
+        style={styles.botaoSecundario}
+        activeOpacity={0.8}
+        onPress={copiarOuCompartilhar}
+        accessibilityRole="button"
+      >
+        <Text style={styles.botaoSecundarioTexto}>
+          Copiar / compartilhar relatório
+        </Text>
+      </TouchableOpacity>
+      {!!avisoCopia && <Text style={styles.textoAjuda}>{avisoCopia}</Text>}
 
       <TouchableOpacity
         style={styles.botaoSecundario}
         activeOpacity={0.8}
         onPress={limpar}
       >
-        <Text style={styles.botaoSecundarioTexto}>
-          Fazer nova análise
-        </Text>
+        <Text style={styles.botaoSecundarioTexto}>Fazer nova análise</Text>
       </TouchableOpacity>
     </View>
   );
