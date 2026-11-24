@@ -26,6 +26,7 @@ import SeletorModal from "../components/SeletorModal";
 import TripCalculator from "../components/TripCalculator";
 import VehicleForm from "../components/VehicleForm";
 import VehicleHub from "../components/VehicleHub";
+import PersonalizationPanel from "../components/PersonalizationPanel";
 import VehicleSelector from "../components/VehicleSelector";
 import WelcomeBanner from "../components/WelcomeBanner";
 
@@ -550,6 +551,8 @@ export default function HomeScreen() {
         />
 
         <VehicleHub />
+
+        <PersonalizationPanel />
 
         <AboutSection />
 
