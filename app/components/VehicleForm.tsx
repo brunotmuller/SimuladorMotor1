@@ -115,7 +115,7 @@ export default function VehicleForm({
   const [dicaAtiva, setDicaAtiva] = useState<string | null>(null);
 
   return (
-    <View style={styles.card}>
+    <View nativeID="data-section" style={styles.card}>
       <View style={styles.sectionKicker}>
         <Text style={styles.sectionKickerText}>02  /  CONDIÇÃO ATUAL</Text>
       </View>
