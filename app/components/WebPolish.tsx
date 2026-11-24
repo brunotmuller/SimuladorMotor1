@@ -109,6 +109,58 @@ export default function WebPolish() {
           #vehicle-section, #data-section, #garage-section { padding: 19px !important; border-radius: 18px !important; }
         }
 
+        /* Hero automotivo em duas colunas */
+        [data-torque-hero] {
+          min-height: 430px;
+          padding: 42px !important;
+          background:
+            radial-gradient(ellipse at 78% 52%, rgba(164, 39, 61, .2), transparent 42%),
+            linear-gradient(125deg, #141116 0%, #0e0d11 56%, #1a0f15 100%) !important;
+        }
+        [data-torque-hero-layout] {
+          display: flex !important;
+          flex-direction: row !important;
+          align-items: center !important;
+          gap: 28px !important;
+        }
+        [data-torque-hero-copy] { flex: 1 1 54%; max-width: none !important; }
+        [data-torque-hero-visual] {
+          flex: 0 0 44%;
+          width: 44% !important;
+          min-width: 0 !important;
+          height: 350px !important;
+          border-radius: 22px !important;
+          background:
+            radial-gradient(ellipse at 50% 65%, rgba(131,38,56,.2), transparent 64%),
+            #09090c !important;
+          box-shadow: inset 0 0 50px rgba(183,49,72,.12), 0 20px 55px rgba(0,0,0,.35);
+        }
+        [data-torque-hero-visual] model-viewer {
+          width: 100% !important;
+          height: 100% !important;
+          min-height: 350px !important;
+          --poster-color: transparent;
+          background: transparent !important;
+        }
+        [data-torque-hero-copy] h1 { font-size: clamp(38px, 4vw, 58px) !important; line-height: 1.02 !important; }
+        @media (max-width: 900px) {
+          [data-torque-hero] { padding: 28px !important; }
+          [data-torque-hero-layout] { flex-direction: column !important; align-items: stretch !important; }
+          [data-torque-hero-copy] { width: 100% !important; }
+          [data-torque-hero-visual] {
+            flex: 0 0 auto !important;
+            width: 100% !important;
+            height: 280px !important;
+          }
+          [data-torque-hero-visual] model-viewer { min-height: 280px !important; }
+        }
+        @media (max-width: 600px) {
+          [data-torque-hero] { padding: 21px !important; border-radius: 20px !important; }
+          [data-torque-hero-copy] h1 { font-size: 36px !important; line-height: 1.08 !important; }
+          [data-torque-hero-visual] { height: 230px !important; }
+          [data-torque-hero-visual] model-viewer { min-height: 230px !important; }
+        }
+
         /* SVG gooey filter target */
         .torque-gooey { filter: url(#torque-goo); }
 
