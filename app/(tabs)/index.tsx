@@ -18,12 +18,14 @@ import {
 import AboutSection from "../components/AboutSection";
 import CarGuide, { ExemploVeiculo } from "../components/CarGuide";
 import Header from "../components/Header";
+import ProgressSteps from "../components/ProgressSteps";
 import ResultCard from "../components/ResultCard";
 import SavedAnalyses from "../components/SavedAnalyses";
 import SeletorModal from "../components/SeletorModal";
 import TripCalculator from "../components/TripCalculator";
 import VehicleForm from "../components/VehicleForm";
 import VehicleSelector from "../components/VehicleSelector";
+import WelcomeBanner from "../components/WelcomeBanner";
 
 import {
   buscarAnos,
@@ -50,35 +52,19 @@ import {
 import { styles } from "./styles/styles";
 
 export default function HomeScreen() {
-  const scrollRef =
-    useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const entrada = useRef(new Animated.Value(0)).current;
 
-  const entrada =
-    useRef(new Animated.Value(0)).current;
+  const [marcas, setMarcas] = useState<ItemAPI[]>([]);
+  const [modelos, setModelos] = useState<ItemAPI[]>([]);
+  const [anos, setAnos] = useState<ItemAPI[]>([]);
 
-  const [marcas, setMarcas] =
-    useState<ItemAPI[]>([]);
+  const [marca, setMarca] = useState<ItemAPI | null>(null);
+  const [modelo, setModelo] = useState<ItemAPI | null>(null);
+  const [ano, setAno] = useState<ItemAPI | null>(null);
 
-  const [modelos, setModelos] =
-    useState<ItemAPI[]>([]);
-
-  const [anos, setAnos] =
-    useState<ItemAPI[]>([]);
-
-  const [marca, setMarca] =
-    useState<ItemAPI | null>(null);
-
-  const [modelo, setModelo] =
-    useState<ItemAPI | null>(null);
-
-  const [ano, setAno] =
-    useState<ItemAPI | null>(null);
-
-  const [dadosFipe, setDadosFipe] =
-    useState<DadosFipe | null>(null);
-
-  const [resultado, setResultado] =
-    useState<Resultado | null>(null);
+  const [dadosFipe, setDadosFipe] = useState<DadosFipe | null>(null);
+  const [resultado, setResultado] = useState<Resultado | null>(null);
   const [dadosAnalisados, setDadosAnalisados] = useState<DadosAtuais | null>(null);
   const [analisesSalvas, setAnalisesSalvas] = useState<AnaliseSalva[]>([]);
   const [avisoSalvamento, setAvisoSalvamento] = useState("");
@@ -86,63 +72,25 @@ export default function HomeScreen() {
 
   const [km, setKm] = useState("");
   const [peso, setPeso] = useState("");
-  const [calibragem, setCalibragem] =
-    useState("");
+  const [calibragem, setCalibragem] = useState("");
+  const [mesesUltimaRevisao, setMesesUltimaRevisao] = useState("");
+  const [tipoPneu, setTipoPneu] = useState<TipoPneu | null>(null);
+  const [tipoUso, setTipoUso] = useState<TipoUso | null>(null);
+  const [condicaoPneu, setCondicaoPneu] = useState<CondicaoPneu | null>(null);
 
-  const [
-    mesesUltimaRevisao,
-    setMesesUltimaRevisao,
-  ] = useState("");
+  const [mensagem, setMensagem] = useState("");
+  const [carregandoMarcas, setCarregandoMarcas] = useState(false);
+  const [carregandoModelos, setCarregandoModelos] = useState(false);
+  const [carregandoAnos, setCarregandoAnos] = useState(false);
+  const [carregandoFipe, setCarregandoFipe] = useState(false);
+  const [analisando, setAnalisando] = useState(false);
 
-  const [tipoPneu, setTipoPneu] =
-    useState<TipoPneu | null>(null);
-
-  const [tipoUso, setTipoUso] =
-    useState<TipoUso | null>(null);
-
-  const [
-    condicaoPneu,
-    setCondicaoPneu,
-  ] = useState<CondicaoPneu | null>(null);
-
-  const [mensagem, setMensagem] =
-    useState("");
-
-  const [
-    carregandoMarcas,
-    setCarregandoMarcas,
-  ] = useState(false);
-
-  const [
-    carregandoModelos,
-    setCarregandoModelos,
-  ] = useState(false);
-
-  const [
-    carregandoAnos,
-    setCarregandoAnos,
-  ] = useState(false);
-
-  const [
-    carregandoFipe,
-    setCarregandoFipe,
-  ] = useState(false);
-
-  const [analisando, setAnalisando] =
-    useState(false);
-
-  const [modalMarca, setModalMarca] =
-    useState(false);
-
-  const [modalModelo, setModalModelo] =
-    useState(false);
-
-  const [modalAno, setModalAno] =
-    useState(false);
+  const [modalMarca, setModalMarca] = useState(false);
+  const [modalModelo, setModalModelo] = useState(false);
+  const [modalAno, setModalAno] = useState(false);
 
   useEffect(() => {
     carregarMarcas();
-
     Animated.timing(entrada, {
       toValue: 1,
       duration: 600,
@@ -153,63 +101,56 @@ export default function HomeScreen() {
 
   useEffect(() => {
     let ativo = true;
-    carregarAnalises().then((analises) => { if (ativo) setAnalisesSalvas(analises); });
-    return () => { ativo = false; };
+    carregarAnalises().then((analises) => {
+      if (ativo) setAnalisesSalvas(analises);
+    });
+    return () => {
+      ativo = false;
+    };
   }, []);
+
+  const passo: 1 | 2 | 3 = resultado ? 3 : dadosFipe ? 2 : 1;
 
   async function carregarMarcas() {
     try {
       setMensagem("");
       setCarregandoMarcas(true);
-
-      const dados =
-        await buscarMarcas();
-
+      const dados = await buscarMarcas();
       setMarcas(dados);
     } catch (erro) {
       console.log(erro);
-
       setMensagem(
-        "Não foi possível conectar à FIPE. Verifique sua internet."
+        "Sem conexão com a tabela FIPE no momento. Verifique a internet e toque em Tentar novamente."
       );
     } finally {
       setCarregandoMarcas(false);
     }
   }
 
-  async function selecionarMarca(
-    item: ItemAPI
-  ) {
+  async function selecionarMarca(item: ItemAPI) {
     setMarca(item);
-
     setModelo(null);
     setAno(null);
     setDadosFipe(null);
     setResultado(null);
-
     setModelos([]);
     setAnos([]);
 
     try {
       setMensagem("");
       setCarregandoModelos(true);
-
-      const dados =
-        await buscarModelos(item.code);
-
+      const dados = await buscarModelos(item.code);
       setModelos(dados);
     } catch {
       setMensagem(
-        "Não foi possível carregar os modelos."
+        "Não foi possível carregar os modelos desta marca. Tente outra marca ou aguarde e tente de novo."
       );
     } finally {
       setCarregandoModelos(false);
     }
   }
 
-  async function selecionarModelo(
-    item: ItemAPI
-  ) {
+  async function selecionarModelo(item: ItemAPI) {
     if (!marca) return;
 
     setModelo(item);
@@ -221,25 +162,18 @@ export default function HomeScreen() {
     try {
       setMensagem("");
       setCarregandoAnos(true);
-
-      const dados = await buscarAnos(
-        marca.code,
-        item.code
-      );
-
+      const dados = await buscarAnos(marca.code, item.code);
       setAnos(dados);
     } catch {
       setMensagem(
-        "Não foi possível carregar os anos."
+        "Não foi possível carregar os anos deste modelo. Tente novamente em instantes."
       );
     } finally {
       setCarregandoAnos(false);
     }
   }
 
-  async function selecionarAno(
-    item: ItemAPI
-  ) {
+  async function selecionarAno(item: ItemAPI) {
     if (!marca || !modelo) return;
 
     setAno(item);
@@ -249,18 +183,11 @@ export default function HomeScreen() {
     try {
       setMensagem("");
       setCarregandoFipe(true);
-
-      const dados =
-        await buscarDadosFipe(
-          marca.code,
-          modelo.code,
-          item.code
-        );
-
+      const dados = await buscarDadosFipe(marca.code, modelo.code, item.code);
       setDadosFipe(dados);
     } catch {
       setMensagem(
-        "Não foi possível consultar os dados FIPE desse veículo."
+        "Não foi possível obter o valor FIPE deste veículo. Confira a seleção ou tente de novo."
       );
     } finally {
       setCarregandoFipe(false);
@@ -276,7 +203,9 @@ export default function HomeScreen() {
     setTipoUso(exemplo.tipoUso);
     setCondicaoPneu(exemplo.condicaoPneu);
     setMensagem("");
-    setAvisoSalvamento("Formulário preenchido com valores de exemplo. Ajuste se quiser.");
+    setAvisoSalvamento(
+      `Formulário preenchido com o exemplo “${exemplo.titulo}”. Ajuste se quiser.`
+    );
   }
 
   function analisar() {
@@ -290,8 +219,7 @@ export default function HomeScreen() {
       calibragem,
       tipoPneu: tipoPneu ?? "",
       tipoUso: tipoUso ?? "",
-      condicaoPneu:
-        condicaoPneu ?? "",
+      condicaoPneu: condicaoPneu ?? "",
       mesesUltimaRevisao,
     });
 
@@ -300,12 +228,7 @@ export default function HomeScreen() {
       return;
     }
 
-    if (
-      !dadosFipe ||
-      !tipoPneu ||
-      !tipoUso ||
-      !condicaoPneu
-    ) {
+    if (!dadosFipe || !tipoPneu || !tipoUso || !condicaoPneu) {
       return;
     }
 
@@ -313,16 +236,14 @@ export default function HomeScreen() {
     setAnalisando(true);
 
     const dadosAtuais: DadosAtuais = {
-        km: Number(km),
-        peso: Number(peso),
-        calibragem: Number(calibragem),
-        pneu: tipoPneu,
-        tipoUso,
-        condicaoPneu,
-        mesesUltimaRevisao: Number(
-          mesesUltimaRevisao
-        ),
-      };
+      km: Number(km),
+      peso: Number(peso),
+      calibragem: Number(calibragem),
+      pneu: tipoPneu,
+      tipoUso,
+      condicaoPneu,
+      mesesUltimaRevisao: Number(mesesUltimaRevisao),
+    };
     const novoResultado = analisarVeiculo(dadosFipe, dadosAtuais);
 
     setResultado(novoResultado);
@@ -332,10 +253,7 @@ export default function HomeScreen() {
 
     setTimeout(() => {
       setAnalisando(false);
-
-      scrollRef.current?.scrollToEnd({
-        animated: true,
-      });
+      scrollRef.current?.scrollToEnd({ animated: true });
     }, 500);
   }
 
@@ -343,38 +261,40 @@ export default function HomeScreen() {
     setMarca(null);
     setModelo(null);
     setAno(null);
-
     setModelos([]);
     setAnos([]);
-
     setDadosFipe(null);
     setResultado(null);
     setDadosAnalisados(null);
     setAvisoSalvamento("");
     setAnaliseSalvaId(null);
-
     setKm("");
     setPeso("");
     setCalibragem("");
     setMesesUltimaRevisao("");
-
     setTipoPneu(null);
     setTipoUso(null);
     setCondicaoPneu(null);
-
     setMensagem("");
-
-    scrollRef.current?.scrollTo({
-      y: 0,
-      animated: true,
-    });
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
   }
 
   async function salvarAnalise() {
-    if (!resultado || !dadosFipe || !dadosAnalisados || !marca || !modelo || !ano || analiseSalvaId) return;
+    if (
+      !resultado ||
+      !dadosFipe ||
+      !dadosAnalisados ||
+      !marca ||
+      !modelo ||
+      !ano ||
+      analiseSalvaId
+    ) {
+      return;
+    }
     const nova: AnaliseSalva = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
       salvaEm: new Date().toISOString(),
+      nome: `${dadosFipe.brand} ${dadosFipe.model} · ${dadosFipe.modelYear}`,
       fipe: dadosFipe,
       dados: dadosAnalisados,
       resultado,
@@ -401,6 +321,15 @@ export default function HomeScreen() {
     }
   }
 
+  async function renomearAnalise(id: string, nome: string) {
+    const atualizadas = analisesSalvas.map((item) =>
+      item.id === id ? { ...item, nome } : item
+    );
+    if (await gravarAnalises(atualizadas)) {
+      setAnalisesSalvas(atualizadas);
+    }
+  }
+
   function abrirAnalise(analise: AnaliseSalva) {
     setMarca(analise.selecao.marca);
     setModelo(analise.selecao.modelo);
@@ -420,11 +349,10 @@ export default function HomeScreen() {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
   }
 
-  const entradaY =
-    entrada.interpolate({
-      inputRange: [0, 1],
-      outputRange: [20, 0],
-    });
+  const entradaY = entrada.interpolate({
+    inputRange: [0, 1],
+    outputRange: [20, 0],
+  });
 
   return (
     <>
@@ -438,11 +366,7 @@ export default function HomeScreen() {
         <Animated.View
           style={{
             opacity: entrada,
-            transform: [
-              {
-                translateY: entradaY,
-              },
-            ],
+            transform: [{ translateY: entradaY }],
           }}
         >
           <Header
@@ -450,33 +374,24 @@ export default function HomeScreen() {
             carregando={carregandoMarcas}
           />
 
+          <ProgressSteps passo={passo} />
+
+          <WelcomeBanner />
+
           {mensagem !== "" && (
             <View style={styles.mensagemErro}>
-              <Text style={styles.erroTitulo}>
-                Atenção
-              </Text>
-
-              <Text style={styles.erroTexto}>
-                {mensagem}
-              </Text>
-
-              {marcas.length === 0 &&
-                !carregandoMarcas && (
-                  <TouchableOpacity
-                    style={
-                      styles.tentarNovamente
-                    }
-                    onPress={carregarMarcas}
-                  >
-                    <Text
-                      style={
-                        styles.tentarNovamenteTexto
-                      }
-                    >
-                      Tentar novamente
-                    </Text>
-                  </TouchableOpacity>
-                )}
+              <Text style={styles.erroTitulo}>Atenção</Text>
+              <Text style={styles.erroTexto}>{mensagem}</Text>
+              {marcas.length === 0 && !carregandoMarcas && (
+                <TouchableOpacity
+                  style={styles.tentarNovamente}
+                  onPress={carregarMarcas}
+                >
+                  <Text style={styles.tentarNovamenteTexto}>
+                    Tentar novamente
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
 
@@ -485,36 +400,16 @@ export default function HomeScreen() {
             modelo={modelo}
             ano={ano}
             dadosFipe={dadosFipe}
-            carregandoMarcas={
-              carregandoMarcas
-            }
-            carregandoModelos={
-              carregandoModelos
-            }
-            carregandoAnos={
-              carregandoAnos
-            }
-            carregandoFipe={
-              carregandoFipe
-            }
-            marcasDisponiveis={
-              marcas.length > 0
-            }
-            modelosDisponiveis={
-              modelos.length > 0
-            }
-            anosDisponiveis={
-              anos.length > 0
-            }
-            abrirMarca={() =>
-              setModalMarca(true)
-            }
-            abrirModelo={() =>
-              setModalModelo(true)
-            }
-            abrirAno={() =>
-              setModalAno(true)
-            }
+            carregandoMarcas={carregandoMarcas}
+            carregandoModelos={carregandoModelos}
+            carregandoAnos={carregandoAnos}
+            carregandoFipe={carregandoFipe}
+            marcasDisponiveis={marcas.length > 0}
+            modelosDisponiveis={modelos.length > 0}
+            anosDisponiveis={anos.length > 0}
+            abrirMarca={() => setModalMarca(true)}
+            abrirModelo={() => setModalModelo(true)}
+            abrirAno={() => setModalAno(true)}
           />
 
           <CarGuide onUsarExemplo={aplicarExemplo} />
@@ -526,20 +421,14 @@ export default function HomeScreen() {
             setPeso={setPeso}
             calibragem={calibragem}
             setCalibragem={setCalibragem}
-            mesesUltimaRevisao={
-              mesesUltimaRevisao
-            }
-            setMesesUltimaRevisao={
-              setMesesUltimaRevisao
-            }
+            mesesUltimaRevisao={mesesUltimaRevisao}
+            setMesesUltimaRevisao={setMesesUltimaRevisao}
             tipoPneu={tipoPneu}
             setTipoPneu={setTipoPneu}
             tipoUso={tipoUso}
             setTipoUso={setTipoUso}
             condicaoPneu={condicaoPneu}
-            setCondicaoPneu={
-              setCondicaoPneu
-            }
+            setCondicaoPneu={setCondicaoPneu}
           />
 
           {!!avisoSalvamento && !resultado && (
@@ -553,29 +442,15 @@ export default function HomeScreen() {
           >
             {analisando ? (
               <>
-                <ActivityIndicator
-                  color="#fff"
-                  size="small"
-                />
-
-                <Text
-                  style={[
-                    styles.botaoTexto,
-                    styles.botaoTextoCarregando,
-                  ]}
-                >
+                <ActivityIndicator color="#fff" size="small" />
+                <Text style={[styles.botaoTexto, styles.botaoTextoCarregando]}>
                   Analisando...
                 </Text>
               </>
             ) : (
               <>
-                <Text style={styles.botaoTexto}>
-                  Analisar veículo
-                </Text>
-
-                <Text style={styles.botaoSeta}>
-                  →
-                </Text>
+                <Text style={styles.botaoTexto}>Analisar veículo</Text>
+                <Text style={styles.botaoSeta}>→</Text>
               </>
             )}
           </TouchableOpacity>
@@ -596,7 +471,12 @@ export default function HomeScreen() {
           </>
         )}
 
-        <SavedAnalyses analises={analisesSalvas} abrir={abrirAnalise} excluir={excluirAnalise} />
+        <SavedAnalyses
+          analises={analisesSalvas}
+          abrir={abrirAnalise}
+          excluir={excluirAnalise}
+          renomear={renomearAnalise}
+        />
 
         <AboutSection />
 
@@ -607,10 +487,8 @@ export default function HomeScreen() {
             resizeMode="contain"
             accessibilityLabel="TorqueLab"
           />
-
           <Text style={styles.footerTexto}>
-            Simulador veicular educacional •{" "}
-            {new Date().getFullYear()}
+            Simulador veicular educacional • {new Date().getFullYear()}
           </Text>
         </View>
       </ScrollView>
@@ -620,9 +498,7 @@ export default function HomeScreen() {
         titulo="Selecionar marca"
         itens={marcas}
         carregando={carregandoMarcas}
-        onClose={() =>
-          setModalMarca(false)
-        }
+        onClose={() => setModalMarca(false)}
         onSelect={selecionarMarca}
       />
 
@@ -631,9 +507,7 @@ export default function HomeScreen() {
         titulo="Selecionar modelo"
         itens={modelos}
         carregando={carregandoModelos}
-        onClose={() =>
-          setModalModelo(false)
-        }
+        onClose={() => setModalModelo(false)}
         onSelect={selecionarModelo}
       />
 
@@ -642,9 +516,7 @@ export default function HomeScreen() {
         titulo="Selecionar ano"
         itens={anos}
         carregando={carregandoAnos}
-        onClose={() =>
-          setModalAno(false)
-        }
+        onClose={() => setModalAno(false)}
         onSelect={selecionarAno}
       />
     </>
