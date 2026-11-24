@@ -26,6 +26,7 @@ import SeletorModal from "../components/SeletorModal";
 import TripCalculator from "../components/TripCalculator";
 import VehicleForm from "../components/VehicleForm";
 import VehicleHub from "../components/VehicleHub";
+import MaintenanceAdvisor from "../components/MaintenanceAdvisor";
 import VehicleSelector from "../components/VehicleSelector";
 import WelcomeBanner from "../components/WelcomeBanner";
 
@@ -566,6 +567,7 @@ export default function HomeScreen() {
           <Text style={{ color: "#a99ba1", fontSize: 13, lineHeight: 20, marginBottom: 16 }}>Conheça modelos, compare características e salve seus favoritos.</Text>
         </View>
         <VehicleHub />
+        <MaintenanceAdvisor />
 
         <View {...(Platform.OS === "web" ? ({ "data-torque-section-heading": "about" } as object) : {})}>
           <Text style={{ color: "#ef7185", fontSize: 10, fontWeight: "900", letterSpacing: 1.8, marginBottom: 7 }}>05 / TORQUELAB</Text>
