@@ -99,7 +99,7 @@ export default function VehicleHub() {
   }
 
   return (
-    <View style={{ marginTop: 8 }}>
+    <View style={{ marginTop: 8 }} {...({ "data-torque-vehicle-hub": "1" } as object)}>
       <View style={[secao, { padding: 15 }]}>
         <Text style={titulo}>Central de veículos</Text>
         <Text style={subtitulo}>As ferramentas ficam organizadas aqui. Toque em um ícone para abrir e toque novamente para fechar.</Text>
