@@ -24,6 +24,7 @@ type Props = {
   salvar: () => void;
   avisoSalvamento: string;
   salvo: boolean;
+  modoDemonstracao?: boolean;
   limpar: () => void;
 };
 
@@ -67,6 +68,7 @@ export default function ResultCard({
   salvar,
   avisoSalvamento,
   salvo,
+  modoDemonstracao = false,
   limpar,
 }: Props) {
   const [avisoCopia, setAvisoCopia] = useState("");
@@ -118,7 +120,7 @@ export default function ResultCard({
       <View style={styles.sectionKicker}>
         <Text style={styles.sectionKickerText}>03  /  SEU RESULTADO</Text>
       </View>
-      <Text style={styles.resultadoPequeno}>RESULTADO DA ANÁLISE</Text>
+      <Text style={styles.resultadoPequeno}>{modoDemonstracao ? "DEMONSTRAÇÃO ILUSTRATIVA" : "RESULTADO DA ANÁLISE"}</Text>
 
       <Text style={styles.resultadoTitulo}>{dadosFipe.brand}</Text>
       <Text style={styles.nomeCarro}>{dadosFipe.model}</Text>
@@ -127,7 +129,7 @@ export default function ResultCard({
       </Text>
 
       <View style={styles.valorFipe}>
-        <Text style={styles.valorFipeLabel}>VALOR FIPE</Text>
+        <Text style={styles.valorFipeLabel}>{modoDemonstracao ? "REFERÊNCIA DE VALOR" : "VALOR FIPE"}</Text>
         <Text style={styles.valorFipeNumero}>{dadosFipe.price}</Text>
       </View>
 
@@ -230,20 +232,28 @@ export default function ResultCard({
         substituem uma avaliação mecânica.
       </Text>
 
-      <TouchableOpacity
-        style={[styles.botao, salvo && styles.desativado]}
-        activeOpacity={0.8}
-        onPress={salvar}
-        disabled={salvo}
-        accessibilityRole="button"
-      >
-        <Text style={styles.botaoTexto}>
-          {salvo ? "Análise salva" : "Salvar análise"}
+      {!modoDemonstracao ? (
+        <>
+          <TouchableOpacity
+            style={[styles.botao, salvo && styles.desativado]}
+            activeOpacity={0.8}
+            onPress={salvar}
+            disabled={salvo}
+            accessibilityRole="button"
+          >
+            <Text style={styles.botaoTexto}>
+              {salvo ? "Análise salva" : "Salvar análise"}
+            </Text>
+            <Text style={styles.botaoSeta}>{salvo ? "✓" : "+"}</Text>
+          </TouchableOpacity>
+          {!!avisoSalvamento && (
+            <Text style={styles.textoAjuda}>{avisoSalvamento}</Text>
+          )}
+        </>
+      ) : (
+        <Text style={styles.textoAjuda}>
+          Demonstração com dados fictícios para apresentar o funcionamento. O preço não foi consultado na Tabela FIPE.
         </Text>
-        <Text style={styles.botaoSeta}>{salvo ? "✓" : "+"}</Text>
-      </TouchableOpacity>
-      {!!avisoSalvamento && (
-        <Text style={styles.textoAjuda}>{avisoSalvamento}</Text>
       )}
 
       <TouchableOpacity
