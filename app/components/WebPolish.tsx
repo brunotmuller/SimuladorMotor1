@@ -347,6 +347,100 @@ export default function WebPolish() {
         }
         [data-torque-status-dot="on"] { animation: torque-pulse 2.2s ease-in-out infinite; }
         [data-torque-status-dot="off"] { animation: torque-pulse-off 2.2s ease-in-out infinite; }
+
+        /* TORQUELAB — redesign editorial */
+        body {
+          background:
+            radial-gradient(ellipse at 50% 0%, rgba(94, 26, 43, .22), transparent 38%),
+            #08080a !important;
+          color: #f5f1f2;
+        }
+        [data-torque-topbar] {
+          min-height: 78px;
+          padding: 8px 4px 22px;
+          border-bottom: 1px solid rgba(255,255,255,.07);
+          margin-bottom: 26px;
+        }
+        [data-torque-topbar] img { filter: drop-shadow(0 8px 18px rgba(0,0,0,.35)); }
+        [data-torque-hero] {
+          position: relative;
+          min-height: 450px;
+          padding: 42px !important;
+          border-radius: 24px !important;
+          border: 1px solid rgba(191,77,99,.36) !important;
+          background:
+            radial-gradient(ellipse at 92% 10%, rgba(159,43,65,.20), transparent 35%),
+            linear-gradient(135deg, #171319 0%, #100e12 52%, #1b1117 100%) !important;
+          box-shadow: 0 32px 90px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.04) !important;
+          overflow: hidden;
+        }
+        [data-torque-hero]::before {
+          content: "TL";
+          position: absolute;
+          right: 38px;
+          bottom: -78px;
+          color: rgba(255,255,255,.025);
+          font-size: clamp(190px, 25vw, 360px);
+          line-height: 1;
+          font-weight: 950;
+          letter-spacing: -.12em;
+          pointer-events: none;
+        }
+        [data-torque-hero-grid] { position: relative; z-index: 1; }
+        [data-torque-hero-copy] { max-width: 700px; }
+        [data-torque-hero-copy] > * { position: relative; z-index: 1; }
+        [data-torque-hero-panel] {
+          flex: 0 0 340px;
+          box-shadow: 0 24px 55px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.04);
+          backdrop-filter: blur(12px);
+        }
+        [data-torque-nav] { position: relative; z-index: 2; }
+        [data-torque-nav] [role="button"] { transition: transform .18s ease, border-color .18s ease, background .18s ease; }
+        [data-torque-nav] [role="button"]:hover { transform: translateY(-2px); border-color: #b64a60 !important; background: rgba(180,52,78,.12) !important; }
+        #vehicle-section, #data-section, #garage-section, #explore-section { scroll-margin-top: 26px; }
+        #vehicle-section, #data-section, #garage-section {
+          border-radius: 20px !important;
+          padding: 28px !important;
+          background: linear-gradient(145deg, #151318 0%, #100f13 100%) !important;
+          border: 1px solid #342831 !important;
+          box-shadow: 0 18px 48px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.035);
+          transition: border-color .2s ease, transform .2s ease;
+        }
+        #vehicle-section:hover, #data-section:hover, #garage-section:hover { border-color: #68404c !important; }
+        #vehicle-section h2, #data-section h2, #garage-section h2 { letter-spacing: -.04em; }
+        [data-torque-columns] { gap: 20px !important; align-items: stretch !important; }
+        [data-torque-columns] > * { min-width: 0; }
+        input, textarea {
+          background: #0b0a0e !important;
+          border: 1px solid #3c3038 !important;
+          border-radius: 11px !important;
+          color: #fff !important;
+          transition: border-color .18s ease, box-shadow .18s ease;
+        }
+        input:focus, textarea:focus {
+          border-color: #c04b63 !important;
+          box-shadow: 0 0 0 3px rgba(207,59,88,.12) !important;
+          outline: none !important;
+        }
+        [data-torque-btn], button, [role="button"] { cursor: pointer; }
+        [data-torque-btn]:hover, button:hover { filter: brightness(1.08); }
+        @media (min-width: 1100px) {
+          [data-torque-hero] { padding: 50px 54px !important; }
+          [data-torque-hero-grid] { gap: 48px !important; }
+          [data-torque-hero-panel] { flex-basis: 370px; width: 370px !important; }
+        }
+        @media (max-width: 900px) {
+          [data-torque-hero] { min-height: 0; padding: 30px !important; }
+          [data-torque-hero-grid] { flex-direction: column !important; align-items: stretch !important; }
+          [data-torque-hero-panel] { width: 100% !important; flex: 0 0 auto !important; }
+          [data-torque-hero-copy] { width: 100% !important; }
+        }
+        @media (max-width: 600px) {
+          [data-torque-topbar] { min-height: 62px; margin-bottom: 18px; }
+          [data-torque-hero] { padding: 23px !important; border-radius: 18px !important; }
+          [data-torque-hero-panel] { padding: 17px !important; }
+          #vehicle-section, #data-section, #garage-section { padding: 19px !important; border-radius: 16px !important; }
+        }
       `;
       document.head.appendChild(style);
     }
