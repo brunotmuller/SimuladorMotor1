@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Platform, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { AnaliseSalva } from "../(tabs)/types/savedAnalysis";
 import { styles } from "../(tabs)/styles/styles";
 
@@ -48,14 +48,18 @@ export default function SavedAnalyses({
   }
 
   return (
-    <View nativeID="garage-section" style={styles.card}>
+    <View
+      nativeID="garage-section"
+      style={styles.card}
+      {...(Platform.OS === "web" ? ({ "data-torque-card": "1" } as object) : {})}
+    >
       <View style={styles.sectionKicker}>
-        <Text style={styles.sectionKickerText}>SUA GARAGEM</Text>
+        <Text style={styles.sectionKickerText}>02 / SUA GARAGEM</Text>
       </View>
       <Text style={styles.tituloSecao}>Análises salvas</Text>
       <Text style={styles.descricaoSecao}>
-        Abra, renomeie ou escolha duas para comparar. Os dados ficam neste
-        dispositivo.
+        Abra, renomeie ou escolha duas análises para comparar. Os dados ficam
+        salvos neste dispositivo.
       </Text>
 
       {analises.length === 0 ? (

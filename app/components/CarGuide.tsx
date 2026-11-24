@@ -17,6 +17,11 @@ import {
 
 export type ExemploVeiculo = {
   id: string;
+  badge: string;
+  marca: string;
+  modelo: string;
+  ano: number;
+  combustivel: string;
   km: string;
   peso: string;
   calibragem: string;
@@ -31,6 +36,11 @@ export type ExemploVeiculo = {
 export const EXEMPLOS: ExemploVeiculo[] = [
   {
     id: "comum",
+    badge: "Equilibrado",
+    marca: "Toyota",
+    modelo: "Corolla XEi 2.0 Flex",
+    ano: 2020,
+    combustivel: "Flex",
     km: "65000",
     peso: "1280",
     calibragem: "32",
@@ -39,10 +49,15 @@ export const EXEMPLOS: ExemploVeiculo[] = [
     tipoUso: "Misto",
     condicaoPneu: "Bom",
     titulo: "Carro comum",
-    descricao: "Carro de passeio do dia a dia, com revisão em dia.",
+    descricao: "Sedã de passeio do dia a dia, com revisão em dia.",
   },
   {
     id: "suv",
+    badge: "SUV Urbano",
+    marca: "Jeep",
+    modelo: "Compass T270 1.3 Turbo",
+    ano: 2023,
+    combustivel: "Flex",
     km: "48000",
     peso: "1850",
     calibragem: "34",
@@ -51,10 +66,15 @@ export const EXEMPLOS: ExemploVeiculo[] = [
     tipoUso: "Cidade",
     condicaoPneu: "Bom",
     titulo: "SUV / carro maior",
-    descricao: "Mais pesado; na cidade o consumo costuma ser maior.",
+    descricao: "Mais pesado; no trânsito urbano o consumo tende a subir.",
   },
   {
     id: "usado",
+    badge: "Atenção",
+    marca: "Volkswagen",
+    modelo: "Gol 1.6 MSI",
+    ano: 2018,
+    combustivel: "Flex",
     km: "145000",
     peso: "1320",
     calibragem: "28",
@@ -63,7 +83,7 @@ export const EXEMPLOS: ExemploVeiculo[] = [
     tipoUso: "Cidade",
     condicaoPneu: "Desgastado",
     titulo: "Carro bem usado",
-    descricao: "Muitos km, revisão atrasada e pneus gastos — a nota tende a cair.",
+    descricao: "Alta quilometragem, revisão atrasada e pneus gastos.",
   },
 ];
 

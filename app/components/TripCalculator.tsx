@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Text, TextInput, View } from "react-native";
+import { Platform, Text, TextInput, View } from "react-native";
 import { calcularViagem } from "../(tabs)/utils/trip";
 import { styles } from "../(tabs)/styles/styles";
 
@@ -16,7 +16,10 @@ export default function TripCalculator({ consumo }: Props) {
   const moeda = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
   return (
-    <View style={styles.card}>
+    <View
+      style={styles.card}
+      {...(Platform.OS === "web" ? ({ "data-torque-card": "1" } as object) : {})}
+    >
       <View style={styles.sectionKicker}><Text style={styles.sectionKickerText}>PLANEJE O TRAJETO</Text></View>
       <Text style={styles.tituloSecao}>Quanto custaria a viagem?</Text>
       <Text style={styles.descricaoSecao}>

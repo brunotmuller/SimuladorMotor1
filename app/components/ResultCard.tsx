@@ -78,6 +78,13 @@ export default function ResultCard({
     Math.min(resultado.nota, 100)
   )}%` as `${number}%`;
 
+  const corNota =
+    resultado.nota >= 80
+      ? "#43c977"
+      : resultado.nota >= 55
+        ? "#f1c27b"
+        : "#ef3340";
+
   const cenarios = [
     ...(dadosAtuais.condicaoPneu === "Desgastado"
       ? [
@@ -116,9 +123,12 @@ export default function ResultCard({
   }
 
   return (
-    <View style={styles.resultado}>
+    <View
+      style={styles.resultado}
+      {...(Platform.OS === "web" ? ({ "data-torque-card": "1" } as object) : {})}
+    >
       <View style={styles.sectionKicker}>
-        <Text style={styles.sectionKickerText}>03  /  SEU RESULTADO</Text>
+        <Text style={styles.sectionKickerText}>RESULTADO</Text>
       </View>
       <Text style={styles.resultadoPequeno}>{modoDemonstracao ? "DEMONSTRAÇÃO ILUSTRATIVA" : "RESULTADO DA ANÁLISE"}</Text>
 
@@ -143,11 +153,18 @@ export default function ResultCard({
             </Text>
           </View>
           <View style={styles.classificacaoBox}>
-            <Text style={styles.classificacao}>{resultado.classificacao}</Text>
+            <Text style={[styles.classificacao, { color: corNota }]}>
+              {resultado.classificacao}
+            </Text>
           </View>
         </View>
         <View style={styles.barraFundo}>
-          <View style={[styles.barra, { width: larguraNota }]} />
+          <View
+            style={[
+              styles.barra,
+              { width: larguraNota, backgroundColor: corNota },
+            ]}
+          />
         </View>
       </View>
 

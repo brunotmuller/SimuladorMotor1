@@ -1,9 +1,4 @@
-import React, {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
@@ -17,18 +12,18 @@ import {
 } from "react-native";
 
 import AboutSection from "../components/AboutSection";
-import CarGuide, { EXEMPLO_PADRAO, ExemploVeiculo } from "../components/CarGuide";
+import CarGuide, { ExemploVeiculo } from "../components/CarGuide";
 import Header from "../components/Header";
+import MaintenanceAdvisor from "../components/MaintenanceAdvisor";
 import ProgressSteps from "../components/ProgressSteps";
+import QuickExamples from "../components/QuickExamples";
 import ResultCard from "../components/ResultCard";
 import SavedAnalyses from "../components/SavedAnalyses";
 import SeletorModal from "../components/SeletorModal";
 import TripCalculator from "../components/TripCalculator";
 import VehicleForm from "../components/VehicleForm";
 import VehicleHub from "../components/VehicleHub";
-import MaintenanceAdvisor from "../components/MaintenanceAdvisor";
 import VehicleSelector from "../components/VehicleSelector";
-import WelcomeBanner from "../components/WelcomeBanner";
 
 import {
   buscarAnos,
@@ -36,12 +31,9 @@ import {
   buscarMarcas,
   buscarModelos,
 } from "./services/fipeApi";
-
-import { analisarVeiculo } from "./utils/analyzer";
 import { carregarAnalises, gravarAnalises } from "./services/savedAnalyses";
-import { AnaliseSalva } from "./types/savedAnalysis";
-import { validarDados } from "./utils/validators";
 
+import { AnaliseSalva } from "./types/savedAnalysis";
 import {
   CondicaoPneu,
   DadosAtuais,
@@ -53,6 +45,11 @@ import {
 } from "./types/vehicle";
 
 import { styles } from "./styles/styles";
+import { analisarVeiculo } from "./utils/analyzer";
+import { validarDados } from "./utils/validators";
+
+const webAttr = (attrs: Record<string, string>) =>
+  Platform.OS === "web" ? (attrs as object) : {};
 
 export default function HomeScreen() {
   const scrollRef = useRef<ScrollView>(null);
@@ -69,7 +66,10 @@ export default function HomeScreen() {
   const [dadosFipe, setDadosFipe] = useState<DadosFipe | null>(null);
   const [resultado, setResultado] = useState<Resultado | null>(null);
   const [modoDemonstracao, setModoDemonstracao] = useState(false);
-  const [dadosAnalisados, setDadosAnalisados] = useState<DadosAtuais | null>(null);
+  const [exemploAtivoId, setExemploAtivoId] = useState<string | null>(null);
+  const [dadosAnalisados, setDadosAnalisados] = useState<DadosAtuais | null>(
+    null
+  );
   const [analisesSalvas, setAnalisesSalvas] = useState<AnaliseSalva[]>([]);
   const [avisoSalvamento, setAvisoSalvamento] = useState("");
   const [analiseSalvaId, setAnaliseSalvaId] = useState<string | null>(null);
@@ -97,7 +97,7 @@ export default function HomeScreen() {
     carregarMarcas();
     Animated.timing(entrada, {
       toValue: 1,
-      duration: 600,
+      duration: 550,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start();
@@ -114,6 +114,19 @@ export default function HomeScreen() {
   }, []);
 
   const passo: 1 | 2 | 3 = resultado ? 3 : dadosFipe ? 2 : 1;
+
+  function rolarParaResultado() {
+    setTimeout(() => {
+      if (Platform.OS === "web" && typeof document !== "undefined") {
+        const el = document.querySelector("#result-section");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+          return;
+        }
+      }
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 120);
+  }
 
   async function carregarMarcas() {
     try {
@@ -133,6 +146,7 @@ export default function HomeScreen() {
 
   async function selecionarMarca(item: ItemAPI) {
     setModoDemonstracao(false);
+    setExemploAtivoId(null);
     setMarca(item);
     setModelo(null);
     setAno(null);
@@ -200,6 +214,7 @@ export default function HomeScreen() {
   }
 
   function aplicarExemplo(exemplo: ExemploVeiculo) {
+    setExemploAtivoId(exemplo.id);
     setKm(exemplo.km);
     setPeso(exemplo.peso);
     setCalibragem(exemplo.calibragem);
@@ -209,12 +224,14 @@ export default function HomeScreen() {
     setCondicaoPneu(exemplo.condicaoPneu);
     setMensagem("");
     setAvisoSalvamento(
-      `Formulário preenchido com o exemplo “${exemplo.titulo}”. Ajuste se quiser.`
+      `Formulário preenchido com o exemplo “${exemplo.titulo}”. Ajuste os valores ou clique em Analisar veículo.`
     );
   }
 
   function analisar() {
-    setModoDemonstracao(false);
+    const ehDemo = dadosFipe?.codeFipe === "DEMONSTRACAO";
+    setModoDemonstracao(ehDemo);
+
     const erro = validarDados({
       marca,
       modelo,
@@ -259,52 +276,59 @@ export default function HomeScreen() {
 
     setTimeout(() => {
       setAnalisando(false);
-      scrollRef.current?.scrollToEnd({ animated: true });
-    }, 500);
+      rolarParaResultado();
+    }, 350);
   }
 
-  function visualizarExemplo() {
+  function visualizarExemplo(exemplo: ExemploVeiculo) {
     const fipeExemplo: DadosFipe = {
       vehicleType: 1,
       price: "Valor ilustrativo — não consultado na FIPE",
-      brand: "Toyota",
-      model: "Corolla XEi 2.0 Flex",
-      modelYear: 2020,
-      fuel: "Flex",
+      brand: exemplo.marca,
+      model: exemplo.modelo,
+      modelYear: exemplo.ano,
+      fuel: exemplo.combustivel,
       codeFipe: "DEMONSTRACAO",
       referenceMonth: "Demonstração",
     };
     const dadosExemplo: DadosAtuais = {
-      km: Number(EXEMPLO_PADRAO.km),
-      peso: Number(EXEMPLO_PADRAO.peso),
-      calibragem: Number(EXEMPLO_PADRAO.calibragem),
-      pneu: EXEMPLO_PADRAO.tipoPneu,
-      tipoUso: EXEMPLO_PADRAO.tipoUso,
-      condicaoPneu: EXEMPLO_PADRAO.condicaoPneu,
-      mesesUltimaRevisao: Number(EXEMPLO_PADRAO.mesesUltimaRevisao),
+      km: Number(exemplo.km),
+      peso: Number(exemplo.peso),
+      calibragem: Number(exemplo.calibragem),
+      pneu: exemplo.tipoPneu,
+      tipoUso: exemplo.tipoUso,
+      condicaoPneu: exemplo.condicaoPneu,
+      mesesUltimaRevisao: Number(exemplo.mesesUltimaRevisao),
     };
-    setMarca({ code: "demo", name: "Toyota" });
-    setModelo({ code: "demo-corolla", name: "Corolla XEi 2.0 Flex" });
-    setAno({ code: "2020", name: "2020 / Flex" });
+    setMarca({ code: `demo-${exemplo.id}`, name: exemplo.marca });
+    setModelo({ code: `demo-model-${exemplo.id}`, name: exemplo.modelo });
+    setAno({
+      code: String(exemplo.ano),
+      name: `${exemplo.ano} / ${exemplo.combustivel}`,
+    });
     setDadosFipe(fipeExemplo);
     setDadosAnalisados(dadosExemplo);
-    setKm(EXEMPLO_PADRAO.km);
-    setPeso(EXEMPLO_PADRAO.peso);
-    setCalibragem(EXEMPLO_PADRAO.calibragem);
-    setMesesUltimaRevisao(EXEMPLO_PADRAO.mesesUltimaRevisao);
-    setTipoPneu(EXEMPLO_PADRAO.tipoPneu);
-    setTipoUso(EXEMPLO_PADRAO.tipoUso);
-    setCondicaoPneu(EXEMPLO_PADRAO.condicaoPneu);
+    setKm(exemplo.km);
+    setPeso(exemplo.peso);
+    setCalibragem(exemplo.calibragem);
+    setMesesUltimaRevisao(exemplo.mesesUltimaRevisao);
+    setTipoPneu(exemplo.tipoPneu);
+    setTipoUso(exemplo.tipoUso);
+    setCondicaoPneu(exemplo.condicaoPneu);
     setResultado(analisarVeiculo(fipeExemplo, dadosExemplo));
     setModoDemonstracao(true);
+    setExemploAtivoId(exemplo.id);
     setAnaliseSalvaId(null);
-    setAvisoSalvamento("Demonstração: veículo e valor FIPE são ilustrativos; nenhum dado foi consultado ou salvo.");
+    setAvisoSalvamento(
+      `Demonstração “${exemplo.marca} ${exemplo.modelo}”: dados ilustrativos aplicados.`
+    );
     setMensagem("");
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
+    rolarParaResultado();
   }
 
   function limpar() {
     setModoDemonstracao(false);
+    setExemploAtivoId(null);
     setMarca(null);
     setModelo(null);
     setAno(null);
@@ -379,6 +403,7 @@ export default function HomeScreen() {
 
   function abrirAnalise(analise: AnaliseSalva) {
     setModoDemonstracao(false);
+    setExemploAtivoId(null);
     setMarca(analise.selecao.marca);
     setModelo(analise.selecao.modelo);
     setAno(analise.selecao.ano);
@@ -394,12 +419,12 @@ export default function HomeScreen() {
     setCondicaoPneu(analise.dados.condicaoPneu);
     setAvisoSalvamento("");
     setAnaliseSalvaId(analise.id);
-    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    rolarParaResultado();
   }
 
   const entradaY = entrada.interpolate({
     inputRange: [0, 1],
-    outputRange: [20, 0],
+    outputRange: [14, 0],
   });
 
   return (
@@ -424,22 +449,10 @@ export default function HomeScreen() {
 
           <ProgressSteps passo={passo} />
 
-          <WelcomeBanner />
-
-          <TouchableOpacity
-            style={styles.demoButton}
-            onPress={visualizarExemplo}
-            activeOpacity={0.85}
-            accessibilityRole="button"
-            accessibilityLabel="Ver análise de exemplo pronta"
-          >
-            <View style={styles.demoButtonTextWrap}>
-              <Text style={styles.demoButtonEyebrow}>DEMONSTRAÇÃO RÁPIDA</Text>
-              <Text style={styles.demoButtonTitle}>Ver análise de exemplo</Text>
-              <Text style={styles.demoButtonDescription}>Abra um resultado completo sem preencher o formulário.</Text>
-            </View>
-            <Text style={styles.demoButtonArrow}>→</Text>
-          </TouchableOpacity>
+          <QuickExamples
+            exemploAtivoId={exemploAtivoId}
+            onSimularExemplo={visualizarExemplo}
+          />
 
           {mensagem !== "" && (
             <View style={styles.mensagemErro}>
@@ -458,102 +471,123 @@ export default function HomeScreen() {
             </View>
           )}
 
-          <View nativeID="vehicle-section" {...(Platform.OS === "web" ? ({ "data-torque-section-heading": "vehicle" } as object) : {})}>
-            <Text style={{ color: "#ef7185", fontSize: 10, fontWeight: "900", letterSpacing: 1.8, marginBottom: 7 }}>01 / CONFIGURAÇÃO</Text>
-            <Text style={{ color: "#fff", fontSize: 25, fontWeight: "900", letterSpacing: -0.7, marginBottom: 7 }}>Identifique seu veículo</Text>
-            <Text style={{ color: "#a99ba1", fontSize: 13, lineHeight: 20, marginBottom: 16 }}>Selecione marca, modelo e ano para consultar a referência FIPE.</Text>
+          <View nativeID="simulator-section" style={styles.sectionHeaderWrap}>
+            <Text style={styles.sectionEyebrow}>01 / SIMULADOR PRINCIPAL</Text>
+            <Text style={styles.sectionHeading}>
+              Configure e analise seu veículo
+            </Text>
+            <Text style={styles.sectionLead}>
+              Escolha marca, modelo e ano pela Tabela FIPE, informe as condições
+              atuais e gere o relatório completo.
+            </Text>
           </View>
-
-          <VehicleSelector
-            marca={marca}
-            modelo={modelo}
-            ano={ano}
-            dadosFipe={dadosFipe}
-            carregandoMarcas={carregandoMarcas}
-            carregandoModelos={carregandoModelos}
-            carregandoAnos={carregandoAnos}
-            carregandoFipe={carregandoFipe}
-            marcasDisponiveis={marcas.length > 0}
-            modelosDisponiveis={modelos.length > 0}
-            anosDisponiveis={anos.length > 0}
-            abrirMarca={() => setModalMarca(true)}
-            abrirModelo={() => setModalModelo(true)}
-            abrirAno={() => setModalAno(true)}
-          />
 
           <View
             style={styles.desktopColumns}
-            {...(Platform.OS === "web" ? ({ "data-torque-columns": "1" } as object) : {})}
+            {...webAttr({ "data-torque-columns": "1" })}
           >
             <View style={styles.desktopColumn}>
+              <VehicleSelector
+                marca={marca}
+                modelo={modelo}
+                ano={ano}
+                dadosFipe={dadosFipe}
+                carregandoMarcas={carregandoMarcas}
+                carregandoModelos={carregandoModelos}
+                carregandoAnos={carregandoAnos}
+                carregandoFipe={carregandoFipe}
+                marcasDisponiveis={marcas.length > 0}
+                modelosDisponiveis={modelos.length > 0}
+                anosDisponiveis={anos.length > 0}
+                abrirMarca={() => setModalMarca(true)}
+                abrirModelo={() => setModalModelo(true)}
+                abrirAno={() => setModalAno(true)}
+              />
+
               <CarGuide onUsarExemplo={aplicarExemplo} />
             </View>
+
             <View style={styles.desktopColumn}>
               <VehicleForm
-            km={km}
-            setKm={setKm}
-            peso={peso}
-            setPeso={setPeso}
-            calibragem={calibragem}
-            setCalibragem={setCalibragem}
-            mesesUltimaRevisao={mesesUltimaRevisao}
-            setMesesUltimaRevisao={setMesesUltimaRevisao}
-            tipoPneu={tipoPneu}
-            setTipoPneu={setTipoPneu}
-            tipoUso={tipoUso}
-            setTipoUso={setTipoUso}
-            condicaoPneu={condicaoPneu}
-            setCondicaoPneu={setCondicaoPneu}
+                km={km}
+                setKm={setKm}
+                peso={peso}
+                setPeso={setPeso}
+                calibragem={calibragem}
+                setCalibragem={setCalibragem}
+                mesesUltimaRevisao={mesesUltimaRevisao}
+                setMesesUltimaRevisao={setMesesUltimaRevisao}
+                tipoPneu={tipoPneu}
+                setTipoPneu={setTipoPneu}
+                tipoUso={tipoUso}
+                setTipoUso={setTipoUso}
+                condicaoPneu={condicaoPneu}
+                setCondicaoPneu={setCondicaoPneu}
               />
+
+              {!!avisoSalvamento && !resultado && (
+                <Text style={styles.textoAjuda}>{avisoSalvamento}</Text>
+              )}
+
+              <TouchableOpacity
+                style={styles.botao}
+                onPress={analisar}
+                disabled={analisando}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                {...webAttr({ "data-torque-cta": "1" })}
+              >
+                {analisando ? (
+                  <>
+                    <ActivityIndicator color="#fff" size="small" />
+                    <Text
+                      style={[styles.botaoTexto, styles.botaoTextoCarregando]}
+                    >
+                      Analisando...
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.botaoTexto}>Analisar veículo</Text>
+                    <Text style={styles.botaoSeta}>→</Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
-
-          {!!avisoSalvamento && !resultado && (
-            <Text style={styles.textoAjuda}>{avisoSalvamento}</Text>
-          )}
-
-          <TouchableOpacity
-            style={styles.botao}
-            onPress={analisar}
-            disabled={analisando}
-          >
-            {analisando ? (
-              <>
-                <ActivityIndicator color="#fff" size="small" />
-                <Text style={[styles.botaoTexto, styles.botaoTextoCarregando]}>
-                  Analisando...
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text style={styles.botaoTexto}>Analisar veículo</Text>
-                <Text style={styles.botaoSeta}>→</Text>
-              </>
-            )}
-          </TouchableOpacity>
         </Animated.View>
 
         {resultado && dadosFipe && dadosAnalisados && (
-          <>
-            <ResultCard
-              resultado={resultado}
-              dadosFipe={dadosFipe}
-              dadosAtuais={dadosAnalisados}
-              salvar={salvarAnalise}
-              avisoSalvamento={avisoSalvamento}
-              salvo={!!analiseSalvaId}
-              modoDemonstracao={modoDemonstracao}
-              limpar={limpar}
-            />
-            <TripCalculator consumo={resultado.consumo} />
-          </>
+          <View nativeID="result-section">
+            <View style={styles.sectionHeaderWrap}>
+              <Text style={styles.sectionEyebrow}>DIAGNÓSTICO GERADO</Text>
+              <Text style={styles.sectionHeading}>
+                Resultado e simulador de viagem
+              </Text>
+            </View>
+            <View
+              style={styles.desktopColumns}
+              {...webAttr({ "data-torque-columns": "1" })}
+            >
+              <View style={styles.desktopColumn}>
+                <ResultCard
+                  resultado={resultado}
+                  dadosFipe={dadosFipe}
+                  dadosAtuais={dadosAnalisados}
+                  salvar={salvarAnalise}
+                  avisoSalvamento={avisoSalvamento}
+                  salvo={!!analiseSalvaId}
+                  modoDemonstracao={modoDemonstracao}
+                  limpar={limpar}
+                />
+              </View>
+              <View style={styles.desktopColumn}>
+                <TripCalculator consumo={resultado.consumo} />
+              </View>
+            </View>
+          </View>
         )}
 
-        <View nativeID="garage-section" {...(Platform.OS === "web" ? ({ "data-torque-section-heading": "garage" } as object) : {})}>
-          <Text style={{ color: "#ef7185", fontSize: 10, fontWeight: "900", letterSpacing: 1.8, marginBottom: 7 }}>03 / COLEÇÃO PESSOAL</Text>
-          <Text style={{ color: "#fff", fontSize: 25, fontWeight: "900", letterSpacing: -0.7, marginBottom: 7 }}>Sua garagem</Text>
-          <Text style={{ color: "#a99ba1", fontSize: 13, lineHeight: 20, marginBottom: 16 }}>Acesse e organize as análises que você salvou neste dispositivo.</Text>
-        </View>
         <SavedAnalyses
           analises={analisesSalvas}
           abrir={abrirAnalise}
@@ -561,18 +595,16 @@ export default function HomeScreen() {
           renomear={renomearAnalise}
         />
 
-        <View nativeID="explore-section" {...(Platform.OS === "web" ? ({ "data-torque-section-heading": "explore" } as object) : {})}>
-          <Text style={{ color: "#ef7185", fontSize: 10, fontWeight: "900", letterSpacing: 1.8, marginBottom: 7 }}>04 / GARAGEM DE REFERÊNCIA</Text>
-          <Text style={{ color: "#fff", fontSize: 25, fontWeight: "900", letterSpacing: -0.7, marginBottom: 7 }}>Explore outros veículos</Text>
-          <Text style={{ color: "#a99ba1", fontSize: 13, lineHeight: 20, marginBottom: 16 }}>Conheça modelos, compare características e salve seus favoritos.</Text>
-        </View>
         <VehicleHub />
-        <MaintenanceAdvisor />
 
-        <View {...(Platform.OS === "web" ? ({ "data-torque-section-heading": "about" } as object) : {})}>
-          <Text style={{ color: "#ef7185", fontSize: 10, fontWeight: "900", letterSpacing: 1.8, marginBottom: 7 }}>05 / TORQUELAB</Text>
-          <Text style={{ color: "#fff", fontSize: 25, fontWeight: "900", letterSpacing: -0.7, marginBottom: 16 }}>Sobre o projeto</Text>
-        </View>
+        <MaintenanceAdvisor
+          marcas={marcas}
+          carregandoMarcas={carregandoMarcas}
+          veiculoAtual={
+            marca && modelo && !modoDemonstracao ? { marca, modelo } : null
+          }
+        />
+
         <AboutSection />
 
         <View style={styles.footer}>

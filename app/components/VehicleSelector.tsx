@@ -2,6 +2,7 @@ import React from "react";
 
 import {
   ActivityIndicator,
+  Platform,
   Text,
   TouchableOpacity,
   View,
@@ -116,8 +117,12 @@ export default function VehicleSelector({
   abrirAno,
 }: Props) {
   return (
-    <View nativeID="vehicle-section" style={styles.card}>
-      <View style={styles.sectionKicker}><Text style={styles.sectionKickerText}>01  /  IDENTIFICAÇÃO</Text></View>
+    <View
+      nativeID="vehicle-section"
+      style={styles.card}
+      {...(Platform.OS === "web" ? ({ "data-torque-card": "1" } as object) : {})}
+    >
+      <View style={styles.sectionKicker}><Text style={styles.sectionKickerText}>01 / IDENTIFICAÇÃO</Text></View>
       <Text style={styles.tituloSecao}>
         Veículo
       </Text>

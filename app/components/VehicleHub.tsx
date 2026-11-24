@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Animated, Easing, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Animated, Easing, Platform, ScrollView, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -30,7 +30,7 @@ export default function VehicleHub() {
   const [comparacaoB, setComparacaoB] = useState(CARS[2].id);
   const [favoritos, setFavoritos] = useState<string[]>([]);
   const [somenteFavoritos, setSomenteFavoritos] = useState(false);
-  const [activePanel, setActivePanel] = useState<Panel>(null);
+  const [activePanel, setActivePanel] = useState<Panel>("catalog");
   const giro = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -99,10 +99,16 @@ export default function VehicleHub() {
   }
 
   return (
-    <View nativeID="explore-section" style={{ marginTop: 8 }}>
-      <View style={[secao, { padding: 15 }]}>
-        <Text style={titulo}>Central de veículos</Text>
-        <Text style={subtitulo}>As ferramentas ficam organizadas aqui. Toque em um ícone para abrir e toque novamente para fechar.</Text>
+    <View nativeID="explore-section" style={{ marginTop: 14 }}>
+      <View
+        style={[secao, { padding: 20 }]}
+        {...(Platform.OS === "web" ? ({ "data-torque-card": "1" } as object) : {})}
+      >
+        <View style={{ alignSelf: "flex-start", backgroundColor: "#21151b", borderWidth: 1, borderColor: "#59303b", borderRadius: 7, paddingHorizontal: 11, paddingVertical: 6, marginBottom: 12 }}>
+          <Text style={{ color: "#ff7180", fontSize: 10, fontWeight: "800", letterSpacing: 1 }}>03 / GARAGEM DE REFERÊNCIA</Text>
+        </View>
+        <Text style={titulo}>Explore outros veículos</Text>
+        <Text style={subtitulo}>Navegue pelo catálogo, veja o destaque, compare modelos lado a lado ou gerencie seus favoritos.</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
           {([
             { id: "spotlight", label: "Destaque", icon: "car-sports" },
@@ -138,7 +144,7 @@ export default function VehicleHub() {
               <View style={{ position: "absolute", top: 61, width: "90%", height: 3, backgroundColor: "#f08b96", opacity: 0.8, borderRadius: 5 }} />
               <View style={{ position: "absolute", bottom: 29, left: "4%", width: 22, height: 12, borderRadius: 7, backgroundColor: "#fff1cf", shadowColor: "#fff", shadowOpacity: 0.9, shadowRadius: 8, elevation: 4 }} />
               <View style={{ position: "absolute", bottom: 29, right: "4%", width: 21, height: 11, borderRadius: 6, backgroundColor: "#ff3149" }} />
-              {[{ left: "17%" }, { right: "17%" }].map((position, index) => (
+              {[{ left: "17%" as const }, { right: "17%" as const }].map((position, index) => (
                 <View key={index} style={[{ position: "absolute", bottom: 0, width: 45, height: 45, borderRadius: 22, backgroundColor: "#050506", borderWidth: 5, borderColor: "#6c7078", alignItems: "center", justifyContent: "center" }, position]}>
                   <View style={{ width: 15, height: 15, borderRadius: 10, backgroundColor: "#bfc3c9", borderWidth: 3, borderColor: "#565a60" }} />
                 </View>

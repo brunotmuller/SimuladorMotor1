@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 
 import {
+  Platform,
   Text,
   TextInput,
   TouchableOpacity,
@@ -115,13 +116,17 @@ export default function VehicleForm({
   const [dicaAtiva, setDicaAtiva] = useState<string | null>(null);
 
   return (
-    <View nativeID="data-section" style={styles.card}>
+    <View
+      nativeID="data-section"
+      style={styles.card}
+      {...(Platform.OS === "web" ? ({ "data-torque-card": "1" } as object) : {})}
+    >
       <View style={styles.sectionKicker}>
-        <Text style={styles.sectionKickerText}>02  /  CONDIÇÃO ATUAL</Text>
+        <Text style={styles.sectionKickerText}>02 / CONDIÇÃO ATUAL</Text>
       </View>
-      <Text style={styles.tituloSecao}>Dados atuais</Text>
+      <Text style={styles.tituloSecao}>Dados do veículo</Text>
       <Text style={styles.descricaoSecao}>
-        Preencha os dados do carro. Toque em um campo para ver uma dica.
+        Informe o estado atual do carro. Toque em um campo para ver uma dica.
       </Text>
 
       {dicaAtiva && DICAS[dicaAtiva] ? (
@@ -133,58 +138,70 @@ export default function VehicleForm({
         <View style={styles.dicaBox}>
           <Text style={styles.dicaTitulo}>DICA RÁPIDA</Text>
           <Text style={styles.dicaTexto}>
-            Não sabe os números? Use o guia do carro acima e um exemplo pronto.
+            Não sabe os números? Use um exemplo pronto acima ou o guia ao lado.
           </Text>
         </View>
       )}
 
-      <Text style={styles.label}>Quilometragem</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ex: 65000"
-        placeholderTextColor="#666"
-        keyboardType="numeric"
-        value={km}
-        maxLength={7}
-        onFocus={() => setDicaAtiva("km")}
-        onChangeText={(texto) => setKm(apenasNumero(texto))}
-      />
+      <View style={styles.linha}>
+        <View style={[styles.campoMetade, styles.campoEsquerda]}>
+          <Text style={styles.label}>Quilometragem (km)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex: 65000"
+            placeholderTextColor="#666"
+            keyboardType="numeric"
+            value={km}
+            maxLength={7}
+            onFocus={() => setDicaAtiva("km")}
+            onChangeText={(texto) => setKm(apenasNumero(texto))}
+          />
+        </View>
 
-      <Text style={styles.label}>Peso aproximado (kg)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ex: 1350"
-        placeholderTextColor="#666"
-        keyboardType="numeric"
-        value={peso}
-        maxLength={4}
-        onFocus={() => setDicaAtiva("peso")}
-        onChangeText={(texto) => setPeso(apenasNumero(texto))}
-      />
+        <View style={styles.campoMetade}>
+          <Text style={styles.label}>Peso aproximado (kg)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex: 1350"
+            placeholderTextColor="#666"
+            keyboardType="numeric"
+            value={peso}
+            maxLength={4}
+            onFocus={() => setDicaAtiva("peso")}
+            onChangeText={(texto) => setPeso(apenasNumero(texto))}
+          />
+        </View>
+      </View>
 
-      <Text style={styles.label}>Calibragem atual (PSI)</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ex: 32"
-        placeholderTextColor="#666"
-        keyboardType="numeric"
-        value={calibragem}
-        maxLength={2}
-        onFocus={() => setDicaAtiva("calibragem")}
-        onChangeText={(texto) => setCalibragem(apenasNumero(texto))}
-      />
+      <View style={styles.linha}>
+        <View style={[styles.campoMetade, styles.campoEsquerda]}>
+          <Text style={styles.label}>Calibragem (PSI)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex: 32"
+            placeholderTextColor="#666"
+            keyboardType="numeric"
+            value={calibragem}
+            maxLength={2}
+            onFocus={() => setDicaAtiva("calibragem")}
+            onChangeText={(texto) => setCalibragem(apenasNumero(texto))}
+          />
+        </View>
 
-      <Text style={styles.label}>Meses desde a última revisão</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Ex: 6"
-        placeholderTextColor="#666"
-        keyboardType="numeric"
-        value={mesesUltimaRevisao}
-        maxLength={3}
-        onFocus={() => setDicaAtiva("revisao")}
-        onChangeText={(texto) => setMesesUltimaRevisao(apenasNumero(texto))}
-      />
+        <View style={styles.campoMetade}>
+          <Text style={styles.label}>Última revisão (meses)</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ex: 6"
+            placeholderTextColor="#666"
+            keyboardType="numeric"
+            value={mesesUltimaRevisao}
+            maxLength={3}
+            onFocus={() => setDicaAtiva("revisao")}
+            onChangeText={(texto) => setMesesUltimaRevisao(apenasNumero(texto))}
+          />
+        </View>
+      </View>
 
       <Opcoes
         titulo="Tipo de pneu"
