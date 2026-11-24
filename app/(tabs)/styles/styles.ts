@@ -313,11 +313,55 @@ export const styles = StyleSheet.create({
   },
   content: {
     width: "100%",
-    maxWidth: 820,
+    maxWidth: 1180,
     alignSelf: "center",
     paddingHorizontal: 20,
     paddingTop: 28,
     paddingBottom: 40,
+  },
+  desktopColumns: {
+    width: "100%",
+  },
+  desktopColumn: {
+    minWidth: 0,
+  },
+  demoButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#171116",
+    borderWidth: 1,
+    borderColor: "#78404a",
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 20,
+  },
+  demoButtonTextWrap: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  demoButtonEyebrow: {
+    color: "#ff7180",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.2,
+    marginBottom: 5,
+  },
+  demoButtonTitle: {
+    color: "#fff",
+    fontSize: 17,
+    fontWeight: "800",
+  },
+  demoButtonDescription: {
+    color: "#c7b8bc",
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 5,
+  },
+  demoButtonArrow: {
+    color: "#ff7180",
+    fontSize: 28,
+    fontWeight: "700",
   },
   topo: {
     flexDirection: "row",
