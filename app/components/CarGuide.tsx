@@ -46,32 +46,32 @@ const PONTOS = [
     label: "Odômetro",
     valor: "~ 65.000 km",
     dica: "Quilometragem no painel. Carros usados costumam ter entre 30 mil e 120 mil km.",
-    top: 18,
-    left: 58,
+    top: 12,
+    left: 52,
   },
   {
     id: "peso",
     label: "Peso",
     valor: "~ 1.280 kg",
     dica: "Peso aproximado do veículo. Hatch ~1.100–1.400 kg · SUV ~1.500–2.200 kg.",
-    top: 42,
-    left: 22,
+    top: 36,
+    left: 8,
   },
   {
     id: "psi",
     label: "Calibragem",
     valor: "30–35 PSI",
     dica: "Pressão dos pneus. Veja a etiqueta na porta do motorista ou no manual.",
-    top: 68,
-    left: 18,
+    top: 78,
+    left: 22,
   },
   {
     id: "rev",
     label: "Revisão",
     valor: "a cada 6–12 meses",
     dica: "Informe quantos meses se passaram desde a última revisão.",
-    top: 38,
-    left: 72,
+    top: 28,
+    left: 78,
   },
 ] as const;
 
@@ -79,34 +79,71 @@ type Props = {
   onUsarExemplo: (exemplo: ExemploVeiculo) => void;
 };
 
+function Roda({ style }: { style: object }) {
+  return (
+    <View style={[c.roda, style]}>
+      <View style={c.rodaAro} />
+      <View style={c.rodaMiolo} />
+      <View style={c.rodaRaio1} />
+      <View style={c.rodaRaio2} />
+    </View>
+  );
+}
+
 export default function CarGuide({ onUsarExemplo }: Props) {
   const [ativo, setAtivo] = useState<string | null>("peso");
   const girar = useRef(new Animated.Value(0)).current;
+  const brilho = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const loop = Animated.loop(
+    const loopGiro = Animated.loop(
       Animated.sequence([
         Animated.timing(girar, {
           toValue: 1,
-          duration: 3200,
+          duration: 3800,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
         Animated.timing(girar, {
           toValue: 0,
-          duration: 3200,
+          duration: 3800,
           easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
       ])
     );
-    loop.start();
-    return () => loop.stop();
-  }, [girar]);
+    const loopBrilho = Animated.loop(
+      Animated.sequence([
+        Animated.timing(brilho, {
+          toValue: 1,
+          duration: 2200,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(brilho, {
+          toValue: 0,
+          duration: 2200,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loopGiro.start();
+    loopBrilho.start();
+    return () => {
+      loopGiro.stop();
+      loopBrilho.stop();
+    };
+  }, [girar, brilho]);
 
   const rotateY = girar.interpolate({
     inputRange: [0, 1],
-    outputRange: ["-8deg", "8deg"],
+    outputRange: ["-10deg", "10deg"],
+  });
+
+  const farolOpacidade = brilho.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.55, 1],
   });
 
   const pontoAtivo = PONTOS.find((p) => p.id === ativo) ?? PONTOS[1];
@@ -128,29 +165,65 @@ export default function CarGuide({ onUsarExemplo }: Props) {
         preencher o formulário com valores típicos.
       </Text>
 
-      {/* Palco 3D simplificado */}
-      <View style={guideStyles.stage}>
-        <View style={guideStyles.chao} />
+      <View style={c.stage}>
+        <View style={c.stageGlow} />
+        <View style={c.chao} />
+        <View style={c.chaoReflexo} />
 
         <Animated.View
           style={[
-            guideStyles.carroWrap,
+            c.carroWrap,
             {
-              transform: [{ perspective: 800 }, { rotateY }],
+              transform: [{ perspective: 900 }, { rotateY }],
             },
           ]}
         >
-          {/* Corpo do carro (visão 3/4 estilizada) */}
-          <View style={guideStyles.corpo}>
-            <View style={guideStyles.teto} />
-            <View style={guideStyles.janela} />
-            <View style={guideStyles.capo} />
-            <View style={guideStyles.paraChoque} />
-            <View style={[guideStyles.roda, guideStyles.rodaTras]} />
-            <View style={[guideStyles.roda, guideStyles.rodaFrente]} />
-            <View style={guideStyles.farol} />
-            <View style={guideStyles.macaneta} />
+          {/* Sombra do carro */}
+          <View style={c.sombraCarro} />
+
+          {/* Saia / underbody */}
+          <View style={c.saia} />
+
+          {/* Corpo principal */}
+          <View style={c.corpo}>
+            <View style={c.corpoBrilho} />
+            <View style={c.linhaCintura} />
           </View>
+
+          {/* Capô */}
+          <View style={c.capo}>
+            <View style={c.capoLinha} />
+          </View>
+
+          {/* Porta-malas / traseira */}
+          <View style={c.traseira} />
+
+          {/* Cabine / teto */}
+          <View style={c.teto}>
+            <View style={c.tetoBrilho} />
+          </View>
+
+          {/* Vidros */}
+          <View style={c.vidroFrente} />
+          <View style={c.vidroTras} />
+          <View style={c.pilar} />
+
+          {/* Farol */}
+          <Animated.View style={[c.farol, { opacity: farolOpacidade }]}>
+            <View style={c.farolLente} />
+          </Animated.View>
+          <View style={c.lanterna} />
+
+          {/* Detalhes */}
+          <View style={c.macaneta} />
+          <View style={c.grade} />
+          <View style={c.paraChoqueF} />
+          <View style={c.paraChoqueT} />
+          <View style={c.retrovisor} />
+
+          {/* Rodas */}
+          <Roda style={c.rodaTras} />
+          <Roda style={c.rodaFrente} />
 
           {PONTOS.map((ponto) => (
             <TouchableOpacity
@@ -158,18 +231,23 @@ export default function CarGuide({ onUsarExemplo }: Props) {
               activeOpacity={0.85}
               onPress={() => setAtivo(ponto.id)}
               style={[
-                guideStyles.hotspot,
+                c.hotspot,
                 {
                   top: `${ponto.top}%` as `${number}%`,
                   left: `${ponto.left}%` as `${number}%`,
                 },
-                ativo === ponto.id && guideStyles.hotspotAtivo,
+                ativo === ponto.id && c.hotspotAtivo,
               ]}
               accessibilityRole="button"
               accessibilityLabel={`${ponto.label}: ${ponto.valor}`}
             >
-              <View style={guideStyles.hotspotBolinha} />
-              <Text style={guideStyles.hotspotTexto}>{ponto.label}</Text>
+              <View
+                style={[
+                  c.hotspotBolinha,
+                  ativo === ponto.id && c.hotspotBolinhaAtiva,
+                ]}
+              />
+              <Text style={c.hotspotTexto}>{ponto.label}</Text>
             </TouchableOpacity>
           ))}
         </Animated.View>
@@ -183,14 +261,15 @@ export default function CarGuide({ onUsarExemplo }: Props) {
         <Text style={[styles.dicaTexto, { marginTop: 6 }]}>{pontoAtivo.dica}</Text>
       </View>
 
-      <View style={guideStyles.resumo}>
-        <Text style={guideStyles.resumoTitulo}>{EXEMPLO_PADRAO.titulo}</Text>
+      <View style={c.resumo}>
+        <Text style={c.resumoTitulo}>{EXEMPLO_PADRAO.titulo}</Text>
         <Text style={styles.textoAjuda}>{EXEMPLO_PADRAO.descricao}</Text>
-        <Text style={guideStyles.resumoLinha}>
-          {EXEMPLO_PADRAO.km} km · {EXEMPLO_PADRAO.peso} kg · {" "}
-          {EXEMPLO_PADRAO.calibragem} PSI · revisão há {EXEMPLO_PADRAO.mesesUltimaRevisao} meses
+        <Text style={c.resumoLinha}>
+          {EXEMPLO_PADRAO.km} km · {EXEMPLO_PADRAO.peso} kg ·{" "}
+          {EXEMPLO_PADRAO.calibragem} PSI · revisão há{" "}
+          {EXEMPLO_PADRAO.mesesUltimaRevisao} meses
         </Text>
-        <Text style={guideStyles.resumoLinha}>
+        <Text style={c.resumoLinha}>
           Pneu {EXEMPLO_PADRAO.tipoPneu} · {EXEMPLO_PADRAO.condicaoPneu} · uso{" "}
           {EXEMPLO_PADRAO.tipoUso}
         </Text>
@@ -213,127 +292,331 @@ export default function CarGuide({ onUsarExemplo }: Props) {
   );
 }
 
-const guideStyles = {
+const c = {
   stage: {
-    height: 200,
+    height: 230,
     marginBottom: 16,
     marginTop: 4,
     justifyContent: "center" as const,
     alignItems: "center" as const,
-    backgroundColor: "#0c0b0d",
-    borderRadius: 16,
+    backgroundColor: "#0a090b",
+    borderRadius: 18,
     borderWidth: 1,
     borderColor: "#3c292e",
     overflow: "hidden" as const,
   },
+  stageGlow: {
+    position: "absolute" as const,
+    width: 280,
+    height: 120,
+    borderRadius: 140,
+    backgroundColor: "rgba(200, 30, 50, 0.12)",
+    top: 20,
+  },
   chao: {
     position: "absolute" as const,
-    bottom: 28,
-    width: "70%" as const,
-    height: 10,
+    bottom: 36,
+    width: "72%" as const,
+    height: 14,
     borderRadius: 99,
-    backgroundColor: "rgba(239,51,64,0.12)",
+    backgroundColor: "rgba(0,0,0,0.55)",
+    alignSelf: "center" as const,
+  },
+  chaoReflexo: {
+    position: "absolute" as const,
+    bottom: 40,
+    width: "55%" as const,
+    height: 4,
+    borderRadius: 99,
+    backgroundColor: "rgba(239,51,64,0.18)",
     alignSelf: "center" as const,
   },
   carroWrap: {
-    width: 260,
-    height: 140,
+    width: 300,
+    height: 160,
     position: "relative" as const,
+  },
+  sombraCarro: {
+    position: "absolute" as const,
+    left: 48,
+    bottom: 18,
+    width: 210,
+    height: 16,
+    borderRadius: 99,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  saia: {
+    position: "absolute" as const,
+    left: 52,
+    top: 98,
+    width: 200,
+    height: 10,
+    backgroundColor: "#1a0a0c",
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
   },
   corpo: {
     position: "absolute" as const,
-    left: 30,
-    top: 40,
-    width: 200,
-    height: 52,
-    backgroundColor: "#c6283a",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#ff6b7c",
-  },
-  teto: {
-    position: "absolute" as const,
     left: 48,
-    top: -28,
-    width: 110,
-    height: 34,
-    backgroundColor: "#9b1c2c",
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 22,
+    top: 58,
+    width: 208,
+    height: 46,
+    backgroundColor: "#d42a3d",
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#e04558",
+    borderColor: "#ff7a8a",
+    overflow: "hidden" as const,
+    ...(Platform.OS === "web"
+      ? ({ boxShadow: "0 8px 24px rgba(180,20,40,0.35)" } as object)
+      : {}),
   },
-  janela: {
+  corpoBrilho: {
     position: "absolute" as const,
-    left: 56,
-    top: -22,
-    width: 94,
-    height: 22,
-    backgroundColor: "#1a3048",
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 14,
-    opacity: 0.9,
+    left: 0,
+    top: 0,
+    right: 0,
+    height: 16,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  linhaCintura: {
+    position: "absolute" as const,
+    left: 12,
+    right: 12,
+    top: 22,
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.12)",
   },
   capo: {
     position: "absolute" as const,
-    right: 8,
-    top: 8,
-    width: 40,
-    height: 3,
-    backgroundColor: "rgba(255,255,255,0.2)",
+    left: 198,
+    top: 62,
+    width: 58,
+    height: 38,
+    backgroundColor: "#c42234",
+    borderTopRightRadius: 18,
+    borderBottomRightRadius: 12,
+    borderWidth: 1,
+    borderColor: "#f06070",
+  },
+  capoLinha: {
+    position: "absolute" as const,
+    left: 10,
+    top: 12,
+    width: 36,
+    height: 2,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  traseira: {
+    position: "absolute" as const,
+    left: 42,
+    top: 64,
+    width: 22,
+    height: 36,
+    backgroundColor: "#a81c2c",
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 10,
+    borderWidth: 1,
+    borderColor: "#e04558",
+  },
+  teto: {
+    position: "absolute" as const,
+    left: 88,
+    top: 28,
+    width: 118,
+    height: 36,
+    backgroundColor: "#9e1a2a",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 28,
+    borderWidth: 1,
+    borderColor: "#e05062",
+    overflow: "hidden" as const,
+  },
+  tetoBrilho: {
+    position: "absolute" as const,
+    left: 8,
+    top: 4,
+    width: 70,
+    height: 10,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  vidroFrente: {
+    position: "absolute" as const,
+    left: 148,
+    top: 34,
+    width: 48,
+    height: 26,
+    backgroundColor: "#1e3a55",
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 4,
+    opacity: 0.95,
+    borderWidth: 1,
+    borderColor: "#3a6080",
+  },
+  vidroTras: {
+    position: "absolute" as const,
+    left: 96,
+    top: 34,
+    width: 48,
+    height: 26,
+    backgroundColor: "#173048",
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 4,
+    opacity: 0.95,
+    borderWidth: 1,
+    borderColor: "#355a78",
+  },
+  pilar: {
+    position: "absolute" as const,
+    left: 142,
+    top: 34,
+    width: 8,
+    height: 28,
+    backgroundColor: "#8a1524",
     borderRadius: 2,
   },
-  paraChoque: {
-    position: "absolute" as const,
-    right: -4,
-    bottom: 6,
-    width: 12,
-    height: 20,
-    backgroundColor: "#7a1522",
-    borderRadius: 4,
-  },
-  roda: {
-    position: "absolute" as const,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: "#1a1a1a",
-    borderWidth: 3,
-    borderColor: "#555",
-    bottom: -16,
-  },
-  rodaTras: { left: 28 },
-  rodaFrente: { right: 24 },
   farol: {
     position: "absolute" as const,
-    right: 4,
-    top: 14,
-    width: 12,
-    height: 10,
+    left: 242,
+    top: 72,
+    width: 16,
+    height: 14,
+    borderRadius: 6,
+    backgroundColor: "#ffe9a0",
+    borderWidth: 1,
+    borderColor: "#fff3c4",
+    ...(Platform.OS === "web"
+      ? ({ boxShadow: "0 0 12px rgba(255, 220, 100, 0.7)" } as object)
+      : {}),
+  },
+  farolLente: {
+    position: "absolute" as const,
+    right: 2,
+    top: 3,
+    width: 5,
+    height: 8,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.55)",
+  },
+  lanterna: {
+    position: "absolute" as const,
+    left: 44,
+    top: 74,
+    width: 10,
+    height: 12,
     borderRadius: 3,
-    backgroundColor: "#ffe082",
+    backgroundColor: "#ff4d5e",
+    borderWidth: 1,
+    borderColor: "#ff8a96",
   },
   macaneta: {
     position: "absolute" as const,
-    left: 88,
-    top: 22,
-    width: 14,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(255,255,255,0.35)",
+    left: 128,
+    top: 78,
+    width: 16,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.4)",
   },
+  grade: {
+    position: "absolute" as const,
+    left: 248,
+    top: 90,
+    width: 10,
+    height: 8,
+    borderRadius: 2,
+    backgroundColor: "#2a1518",
+    borderWidth: 1,
+    borderColor: "#5a3038",
+  },
+  paraChoqueF: {
+    position: "absolute" as const,
+    left: 248,
+    top: 98,
+    width: 14,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#2a1216",
+  },
+  paraChoqueT: {
+    position: "absolute" as const,
+    left: 40,
+    top: 98,
+    width: 14,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#2a1216",
+  },
+  retrovisor: {
+    position: "absolute" as const,
+    left: 188,
+    top: 58,
+    width: 12,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#b01e30",
+    borderWidth: 1,
+    borderColor: "#ff6b7c",
+  },
+  roda: {
+    position: "absolute" as const,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: "#111",
+    borderWidth: 3,
+    borderColor: "#333",
+    bottom: 12,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  rodaAro: {
+    position: "absolute" as const,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: "#888",
+    backgroundColor: "#2a2a2a",
+  },
+  rodaMiolo: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#c0c0c0",
+    zIndex: 2,
+  },
+  rodaRaio1: {
+    position: "absolute" as const,
+    width: 18,
+    height: 2,
+    backgroundColor: "#777",
+    borderRadius: 1,
+  },
+  rodaRaio2: {
+    position: "absolute" as const,
+    width: 2,
+    height: 18,
+    backgroundColor: "#777",
+    borderRadius: 1,
+  },
+  rodaTras: { left: 72 },
+  rodaFrente: { left: 198 },
   hotspot: {
     position: "absolute" as const,
     transform: [{ translateX: -8 }, { translateY: -8 }],
     flexDirection: "row" as const,
     alignItems: "center" as const,
-    backgroundColor: "rgba(20,16,18,0.92)",
+    backgroundColor: "rgba(14,12,14,0.94)",
     borderWidth: 1,
     borderColor: "#6a303a",
     borderRadius: 99,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    zIndex: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    zIndex: 8,
   },
   hotspotAtivo: {
     borderColor: "#ef3340",
@@ -345,6 +628,9 @@ const guideStyles = {
     borderRadius: 4,
     backgroundColor: "#ef3340",
     marginRight: 5,
+  },
+  hotspotBolinhaAtiva: {
+    backgroundColor: "#ff7180",
   },
   hotspotTexto: {
     color: "#f0dce0",
