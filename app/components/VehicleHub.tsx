@@ -19,7 +19,7 @@ const CARS: Car[] = [
 ];
 
 const FAVORITES_KEY = "torquelab-favoritos-v1";
-const colors = { card: "#121014", panel: "#1c1519", border: "#503039", red: "#ef3340", pink: "#ff7180", text: "#fff", muted: "#bdaeb1", dark: "#0b0a0c" };
+const colors = { card: "#111115", panel: "#1b151a", border: "#3a2a32", red: "#e43b55", pink: "#ff8797", text: "#fff", muted: "#b9aeb3", dark: "#0b0a0e" };
 type Panel = "spotlight" | "catalog" | "compare" | "garage" | null;
 
 export default function VehicleHub() {
@@ -70,7 +70,7 @@ export default function VehicleHub() {
     try { await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(atualizados)); } catch { /* mantém estado em memória */ }
   }
 
-  const secao = { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 20, padding: 18, marginBottom: 14 } as const;
+  const secao = { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 22, padding: 22, marginBottom: 18, shadowColor: "#000", shadowOpacity: 0.22, shadowRadius: 20, shadowOffset: { width: 0, height: 10 } } as const;
   const titulo = { color: colors.text, fontSize: 20, fontWeight: "800" as const, marginBottom: 6 };
   const subtitulo = { color: colors.muted, fontSize: 12, lineHeight: 18, marginBottom: 14 } as const;
   const botao = { backgroundColor: "#2a171d", borderWidth: 1, borderColor: "#71313a", borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 } as const;
@@ -126,20 +126,20 @@ export default function VehicleHub() {
           <Text style={{ color: colors.pink, fontSize: 10, fontWeight: "800", letterSpacing: 1.2, marginBottom: 7 }}>VEÍCULO EM DESTAQUE</Text>
           <Text style={titulo}>{carro.brand} {carro.model}</Text>
           <Text style={subtitulo}>{carro.year} · {carro.category} · {carro.transmission}</Text>
-          <View style={{ backgroundColor: "#09090c", borderRadius: 17, borderWidth: 1, borderColor: colors.border, height: 185, justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
-            <View style={{ position: "absolute", bottom: 24, width: "76%", height: 22, borderRadius: 100, backgroundColor: "#000", opacity: 0.75, transform: [{ scaleX: 1.1 }] }} />
-            <Animated.View style={{ width: "82%", maxWidth: 390, height: 115, alignItems: "center", justifyContent: "center", transform: [{ perspective: 850 }, { rotateY: rotacao }, { rotateX: "3deg" }] }}>
-              <View style={{ position: "absolute", bottom: 15, width: "92%", height: 55, borderRadius: 35, borderTopLeftRadius: 55, borderTopRightRadius: 48, backgroundColor: "#7f1d2c", borderBottomWidth: 7, borderBottomColor: "#350d16", shadowColor: "#f34a5e", shadowOpacity: 0.5, shadowRadius: 15, shadowOffset: { width: 0, height: -5 }, elevation: 12 }} />
-              <View style={{ position: "absolute", top: 7, width: "52%", height: 55, backgroundColor: "#681724", borderTopLeftRadius: 60, borderTopRightRadius: 50, borderWidth: 2, borderColor: "#c15b69", transform: [{ skewX: "-8deg" }] }} />
-              <View style={{ position: "absolute", top: 15, width: "42%", height: 35, backgroundColor: "#14232c", borderRadius: 12, borderWidth: 2, borderColor: "#82949b", flexDirection: "row", overflow: "hidden" }}>
+          <View style={{ backgroundColor: "#09090c", borderRadius: 17, borderWidth: 1, borderColor: colors.border, height: 235, justifyContent: "center", alignItems: "center", overflow: "hidden" }}>
+            <View style={{ position: "absolute", bottom: 30, width: "76%", height: 26, borderRadius: 100, backgroundColor: "#000", opacity: 0.75, transform: [{ scaleX: 1.1 }] }} />
+            <Animated.View style={{ width: "88%", maxWidth: 480, height: 155, alignItems: "center", justifyContent: "center", transform: [{ perspective: 850 }, { rotateY: rotacao }, { rotateX: "3deg" }] }}>
+              <View style={{ position: "absolute", bottom: 19, width: "92%", height: 72, borderRadius: 35, borderTopLeftRadius: 55, borderTopRightRadius: 48, backgroundColor: "#7f1d2c", borderBottomWidth: 7, borderBottomColor: "#350d16", shadowColor: "#f34a5e", shadowOpacity: 0.5, shadowRadius: 15, shadowOffset: { width: 0, height: -5 }, elevation: 12 }} />
+              <View style={{ position: "absolute", top: 7, width: "54%", height: 72, backgroundColor: "#681724", borderTopLeftRadius: 60, borderTopRightRadius: 50, borderWidth: 2, borderColor: "#c15b69", transform: [{ skewX: "-8deg" }] }} />
+              <View style={{ position: "absolute", top: 16, width: "44%", height: 46, backgroundColor: "#14232c", borderRadius: 12, borderWidth: 2, borderColor: "#82949b", flexDirection: "row", overflow: "hidden" }}>
                 <View style={{ flex: 1, borderRightWidth: 2, borderRightColor: "#84949a", backgroundColor: "#1b303a" }} />
                 <View style={{ flex: 1, backgroundColor: "#101c24" }} />
               </View>
               <View style={{ position: "absolute", top: 61, width: "90%", height: 3, backgroundColor: "#f08b96", opacity: 0.8, borderRadius: 5 }} />
-              <View style={{ position: "absolute", bottom: 22, left: "4%", width: 18, height: 10, borderRadius: 7, backgroundColor: "#fff1cf", shadowColor: "#fff", shadowOpacity: 0.9, shadowRadius: 8, elevation: 4 }} />
-              <View style={{ position: "absolute", bottom: 22, right: "4%", width: 17, height: 9, borderRadius: 6, backgroundColor: "#ff3149" }} />
+              <View style={{ position: "absolute", bottom: 29, left: "4%", width: 22, height: 12, borderRadius: 7, backgroundColor: "#fff1cf", shadowColor: "#fff", shadowOpacity: 0.9, shadowRadius: 8, elevation: 4 }} />
+              <View style={{ position: "absolute", bottom: 29, right: "4%", width: 21, height: 11, borderRadius: 6, backgroundColor: "#ff3149" }} />
               {[{ left: "17%" }, { right: "17%" }].map((position, index) => (
-                <View key={index} style={[{ position: "absolute", bottom: 0, width: 37, height: 37, borderRadius: 22, backgroundColor: "#050506", borderWidth: 5, borderColor: "#6c7078", alignItems: "center", justifyContent: "center" }, position]}>
+                <View key={index} style={[{ position: "absolute", bottom: 0, width: 45, height: 45, borderRadius: 22, backgroundColor: "#050506", borderWidth: 5, borderColor: "#6c7078", alignItems: "center", justifyContent: "center" }, position]}>
                   <View style={{ width: 15, height: 15, borderRadius: 10, backgroundColor: "#bfc3c9", borderWidth: 3, borderColor: "#565a60" }} />
                 </View>
               ))}
