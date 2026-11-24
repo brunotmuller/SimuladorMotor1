@@ -28,10 +28,10 @@ export default function Header({ online, carregando }: Props) {
   }
 
   const navItems = [
-    { label: "Analisar veículo", selector: '[data-torque-target="vehicle"]' },
-    { label: "Informar dados", selector: '[data-torque-target="data"]' },
-    { label: "Minha garagem", selector: '[data-torque-target="garage"]' },
-    { label: "Explorar carros", selector: '[data-torque-target="explore"]' },
+    { label: "Analisar veículo", selector: '#vehicle-section' },
+    { label: "Informar dados", selector: '#data-section' },
+    { label: "Minha garagem", selector: '#garage-section' },
+    { label: "Explorar carros", selector: '#explore-section' },
   ];
 
   return (
