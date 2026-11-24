@@ -454,6 +454,57 @@ export default function WebPolish() {
           [data-torque-hero-panel] { padding: 17px !important; }
           #vehicle-section, #data-section, #garage-section { padding: 19px !important; border-radius: 16px !important; }
         }
+
+        /* Cinematic hero, refined motion and mobile-first layout */
+        [data-torque-hero] {
+          min-height: 0 !important;
+          padding: 38px !important;
+          border-radius: 26px !important;
+          background: linear-gradient(110deg, rgba(9,8,11,.88), rgba(13,9,13,.55)) !important;
+          box-shadow: 0 30px 85px rgba(0,0,0,.48), inset 0 1px 0 rgba(255,255,255,.06) !important;
+        }
+        [data-torque-hero-content] { width: 100%; }
+        [data-torque-hero-grid] { display: flex; flex-direction: row; align-items: center; gap: 34px !important; }
+        [data-torque-hero-copy] { flex: 1 1 58%; max-width: 720px !important; }
+        [data-torque-hero-panel] { flex: 0 0 300px; width: 300px !important; backdrop-filter: blur(16px); }
+        [data-torque-title] { font-size: clamp(42px, 5.1vw, 68px) !important; line-height: 1.02 !important; letter-spacing: -.055em !important; }
+        [data-torque-hero-actions] [role="button"] { transition: transform .22s ease, box-shadow .22s ease, background .22s ease; }
+        [data-torque-hero-actions] [role="button"]:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(220,48,76,.28); }
+        [data-torque-enter] { animation: torque-enter .7s cubic-bezier(.2,.8,.2,1) both; }
+        [data-torque-section-heading] { animation: torque-enter .55s ease both; }
+        [data-torque-card]:hover { transform: translateY(-3px); }
+        @keyframes torque-enter { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 900px) {
+          [data-torque-hero] { padding: 28px !important; }
+          [data-torque-hero-grid] { flex-direction: column !important; align-items: stretch !important; gap: 24px !important; }
+          [data-torque-hero-copy] { width: 100% !important; max-width: none !important; }
+          [data-torque-hero-panel] { width: 100% !important; flex: 1 1 auto !important; }
+          [data-torque-columns] { display: flex !important; flex-direction: column !important; gap: 14px !important; }
+        }
+        @media (max-width: 640px) {
+          body { overflow-x: hidden; }
+          [data-torque-topbar] { gap: 8px; padding: 4px 0 16px; margin-bottom: 17px; }
+          [data-torque-topbar] img { width: 126px !important; height: 60px !important; }
+          [data-torque-status-dot] { padding: 7px 9px !important; }
+          [data-torque-hero] { padding: 20px !important; border-radius: 19px !important; min-height: 0 !important; }
+          [data-torque-title] { font-size: clamp(34px, 9vw, 43px) !important; line-height: 1.06 !important; letter-spacing: -.045em !important; }
+          [data-torque-hero-copy] p { font-size: 13px !important; line-height: 1.65 !important; }
+          [data-torque-hero-actions] { display: grid !important; grid-template-columns: 1fr; gap: 9px !important; }
+          [data-torque-hero-actions] [role="button"] { width: 100% !important; min-height: 48px; justify-content: center; align-items: center; }
+          [data-torque-nav] { display: grid !important; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 7px !important; }
+          [data-torque-nav] [role="button"] { min-width: 0; padding: 10px 7px !important; justify-content: center; }
+          [data-torque-nav] [role="button"] * { font-size: 10px !important; text-align: center; }
+          [data-torque-hero-panel] { padding: 15px !important; }
+          [data-torque-section-heading] { margin-top: 30px !important; }
+          [data-torque-columns] > * { width: 100% !important; }
+          input, textarea, button, [role="button"] { max-width: 100%; }
+          #vehicle-section, #data-section, #garage-section { padding: 16px !important; border-radius: 15px !important; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          [data-torque-enter], [data-torque-section-heading] { animation: none !important; }
+          [data-torque-card], [data-torque-hero-actions] [role="button"] { transition: none !important; }
+        }
       `;
       document.head.appendChild(style);
     }
