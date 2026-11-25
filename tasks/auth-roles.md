@@ -140,7 +140,7 @@ graph TD
 
 ### [TASK-08] Telas de Login/Cadastro, modo visitante, menu de conta e guarda RBAC na UI
 - **Camada:** `ui`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-07`
 - **Definição de Conclusão (DoD):**
   - Criar `components/auth/AuthScreen.tsx` seguindo a identidade visual dark + crimson do TorqueLab (mobile-first e responsivo):
@@ -157,7 +157,7 @@ graph TD
 
 ### [TASK-09] Testes automatizados cobrindo todos os cenários BDD e verificação de build
 - **Camada:** `test`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-05`, `TASK-08`
 - **Definição de Conclusão (DoD):**
   - Criar `server/auth/auth.test.mjs` usando `node --test` com SQLite em memória (`:memory:`) cobrindo obrigatoriamente:
