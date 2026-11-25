@@ -63,7 +63,7 @@ graph TD
 
 ### [TASK-03] Utilitários de criptografia, JWT e validação de payloads
 - **Camada:** `service`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-02`
 - **Definição de Conclusão (DoD):**
   - Criar `server/auth/crypto.mjs` implementando:
@@ -79,7 +79,7 @@ graph TD
 
 ### [TASK-04] Serviço de autenticação, rotação de refresh token e proteção contra força bruta
 - **Camada:** `service`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-02`, `TASK-03`
 - **Definição de Conclusão (DoD):**
   - Criar `server/auth/authService.mjs` com injeção de `db` e `clock` (facilitando testes determinísticos) implementando:
