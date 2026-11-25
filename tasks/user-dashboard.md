@@ -118,7 +118,7 @@ graph TD
 
 ### [TASK-06] Modais de cadastro/edição de veículo, hodômetro com confirmação e registro de manutenção
 - **Camada:** `ui`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-05`
 - **Definição de Conclusão (DoD):**
   - Criar `components/dashboard/UserVehicleModal.tsx`:
@@ -134,7 +134,7 @@ graph TD
 
 ### [TASK-07] Dashboard Principal do Usuário e integração com o Simulador Completo
 - **Camada:** `ui`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-05`, `TASK-06`
 - **Definição de Conclusão (DoD):**
   - Criar `components/dashboard/UserDashboardView.tsx` no tema visual TorqueLab (dark + crimson, mobile-first e responsivo) implementando integralmente:
