@@ -1,7 +1,7 @@
 # Autenticação e Controle de Acesso (RBAC) - Plano Técnico de Tarefas
 
 - **Especificação:** `specs/auth-roles.md`
-- **Status Geral:** `pending`
+- **Status Geral:** `approved`
 
 ## Grafo de Dependências
 
@@ -157,7 +157,7 @@ graph TD
 
 ### [TASK-09] Testes automatizados cobrindo todos os cenários BDD e verificação de build
 - **Camada:** `test`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-05`, `TASK-08`
 - **Definição de Conclusão (DoD):**
   - Criar `server/auth/auth.test.mjs` usando `node --test` com SQLite em memória (`:memory:`) cobrindo obrigatoriamente:
