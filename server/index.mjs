@@ -1,12 +1,15 @@
 import { createServer } from "node:http";
+import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { loadAuthConfig } from "./auth/config.mjs";
 import { hashPassword } from "./auth/crypto.mjs";
 import { openAuthDatabase, seedInitialAdmin } from "./auth/db.mjs";
 import { createAuthRouter, isDatabaseError } from "./auth/routes.mjs";
 import { fetchFalconImage, fetchFalconPlate } from "./falcon.mjs";
+import { createStaticWebHandler } from "./static.mjs";
 
 const port = Number(process.env.API_PORT || 3001);
+const host = process.env.API_HOST?.trim() || "0.0.0.0";
 
 function json(response, status, body) {
   response.writeHead(status, {
@@ -36,17 +39,45 @@ function parseAllowedOrigins(rawOrigins) {
   );
 }
 
+function isOriginAllowed(origin, request, origins, allowLocalDevOrigins) {
+  if (!origin) return true;
+  if (origins.has(origin)) return true;
+
+  const reqHost = request.headers?.host;
+  if (
+    typeof reqHost === "string" &&
+    reqHost.trim() !== "" &&
+    (origin === `http://${reqHost}` || origin === `https://${reqHost}`)
+  ) {
+    return true;
+  }
+
+  if (
+    allowLocalDevOrigins &&
+    /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 export function createAppServer({
   authDb = null,
   authConfig = null,
   now = () => Date.now(),
   allowedOrigins = null,
   falconToken = null,
+  serveWebDist = process.env.SERVE_WEB_DIST === "true",
+  webDistDir = process.env.WEB_DIST_DIR || resolve(process.cwd(), "dist"),
+  webBasePath = process.env.WEB_BASE_PATH || "/SimuladorMotor1",
 } = {}) {
   const token =
     falconToken !== null ? falconToken : process.env.FALCON_API_TOKEN?.trim();
   const origins = parseAllowedOrigins(allowedOrigins);
   const config = authConfig ?? loadAuthConfig(process.env);
+  const allowLocalDevOrigins =
+    allowedOrigins === null && config.nodeEnv !== "production";
   const attempts = new Map();
 
   let ownedDb = null;
@@ -81,6 +112,10 @@ export function createAppServer({
     now,
   });
 
+  const handleStaticWeb = serveWebDist
+    ? createStaticWebHandler({ distDir: webDistDir, basePath: webBasePath })
+    : null;
+
   function limited(address) {
     const currentNow = now();
     const previous = attempts.get(address);
@@ -96,7 +131,7 @@ export function createAppServer({
   const appServer = createServer(async (request, response) => {
     try {
       const origin = request.headers.origin;
-      if (origin && !origins.has(origin)) {
+      if (origin && !isOriginAllowed(origin, request, origins, allowLocalDevOrigins)) {
         return json(response, 403, { error: "Origem não permitida." });
       }
       if (origin) {
@@ -118,8 +153,19 @@ export function createAppServer({
 
       const path = new URL(request.url ?? "/", "http://localhost").pathname;
 
+      if (path === "/api/health") {
+        if (request.method !== "GET" && request.method !== "HEAD") {
+          return json(response, 405, { error: "Método não permitido." });
+        }
+        return json(response, 200, { status: "ok" });
+      }
+
       const handledByAuth = await handleAuthRoute(request, response, path, json);
       if (handledByAuth) {
+        return;
+      }
+
+      if (handleStaticWeb && handleStaticWeb(request, response, path)) {
         return;
       }
 
@@ -194,7 +240,11 @@ export const server = createAppServer();
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   server.initAuth();
-  server.listen(port, () =>
-    console.log(`API TorqueLab em http://localhost:${port}`),
-  );
+  server.listen(port, host, () => {
+    const mode =
+      process.env.SERVE_WEB_DIST === "true"
+        ? "API + Frontend Web"
+        : "API TorqueLab";
+    console.log(`${mode} rodando em http://${host}:${port}`);
+  });
 }

@@ -100,7 +100,41 @@ export function resolveDefaultApiBaseUrl(): string {
     typeof process !== "undefined" && process.env
       ? process.env.EXPO_PUBLIC_API_BASE_URL
       : undefined;
-  return normalizeBaseUrl(envUrl);
+  const trimmedEnv = typeof envUrl === "string" ? envUrl.trim() : "";
+
+  if (trimmedEnv.toLowerCase() === "same-origin") {
+    if (typeof window !== "undefined" && window.location?.origin) {
+      return window.location.origin.replace(/\/+$/, "");
+    }
+    return "";
+  }
+
+  const resolved = normalizeBaseUrl(trimmedEnv);
+
+  if (typeof window !== "undefined" && window.location) {
+    const { hostname, port, protocol, origin } = window.location;
+    // Se o app foi servido na mesma origem do backend (ex.: Docker na porta 3001),
+    // usa a origem atual automaticamente (funciona em localhost, 127.0.0.1 e IP da rede).
+    if (
+      resolved === DEFAULT_API_BASE_URL &&
+      origin &&
+      port !== "8081" &&
+      port !== "8082" &&
+      port !== "19006"
+    ) {
+      return origin.replace(/\/+$/, "");
+    }
+
+    // Em dev web (8081), alinha localhost vs 127.0.0.1 com o host do navegador.
+    if (
+      resolved === DEFAULT_API_BASE_URL &&
+      (hostname === "127.0.0.1" || hostname === "localhost")
+    ) {
+      return `${protocol}//${hostname}:3001`;
+    }
+  }
+
+  return resolved;
 }
 
 function buildRequestUrl(baseUrl: string, path: string): string {
