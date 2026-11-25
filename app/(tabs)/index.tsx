@@ -28,9 +28,7 @@ import PreventiveDashboard from "@/components/preventive/PreventiveDashboard";
 import ServiceHistorySection from "@/components/preventive/ServiceHistorySection";
 import VehicleRegistrationModal from "@/components/preventive/VehicleRegistrationModal";
 import { pStyles } from "@/components/preventive/styles";
-import { DEMO_VEHICLES } from "@/lib/preventive/catalog";
 import {
-  createVehicleFromDemo,
   formatKm,
   recordMaintenanceCompletion,
 } from "@/lib/preventive/engine";
@@ -81,7 +79,7 @@ export default function HomeScreen() {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Navegação principal em abas limpas (Painel do Carro é a tela principal)
-  const [activeSection, setActiveSection] = useState<AppSection>("dashboard");
+  const [activeSection, setActiveSection] = useState<AppSection>("simulator");
 
   // Estado persistido do Assistente Preventivo
   const [preventiveStore, setPreventiveStore] = useState<PreventiveStoreState>({
@@ -174,21 +172,7 @@ export default function HomeScreen() {
     let ativo = true;
     loadPreventiveStore(DEFAULT_LOCAL_OWNER_ID).then(async (loaded) => {
       if (!ativo) return;
-      if (loaded.vehicles.length === 0) {
-        const starter = createVehicleFromDemo(DEMO_VEHICLES[0], {
-          ownerId: DEFAULT_LOCAL_OWNER_ID,
-        });
-        const initial: PreventiveStoreState = {
-          version: 1,
-          ownerId: DEFAULT_LOCAL_OWNER_ID,
-          activeVehicleId: starter.id,
-          vehicles: [starter],
-        };
-        setPreventiveStore(initial);
-        await savePreventiveStore(initial);
-      } else {
-        setPreventiveStore(loaded);
-      }
+      setPreventiveStore(loaded);
       setStoreReady(true);
     });
     return () => {
@@ -655,27 +639,27 @@ export default function HomeScreen() {
               {...webAttr({ "data-torque-mode-nav": "1" })}
             >
               <TouchableOpacity
-                onPress={() => switchSection("dashboard")}
+                onPress={() => switchSection("simulator")}
                 activeOpacity={0.85}
                 accessibilityRole="tab"
-                accessibilityState={{ selected: activeSection === "dashboard" }}
+                accessibilityState={{ selected: activeSection === "simulator" }}
                 style={[
                   pStyles.navTabBtn,
-                  activeSection === "dashboard" && pStyles.navTabBtnActive,
+                  activeSection === "simulator" && pStyles.navTabBtnActive,
                 ]}
               >
                 <Ionicons
-                  name="shield-checkmark-outline"
+                  name="calculator-outline"
                   size={15}
-                  color={activeSection === "dashboard" ? "#fff" : "#b9adb2"}
+                  color={activeSection === "simulator" ? "#fff" : "#b9adb2"}
                 />
                 <Text
                   style={[
                     pStyles.navTabText,
-                    activeSection === "dashboard" && pStyles.navTabTextActive,
+                    activeSection === "simulator" && pStyles.navTabTextActive,
                   ]}
                 >
-                  Painel do Carro
+                  Simulador & Custos
                 </Text>
               </TouchableOpacity>
 
@@ -710,27 +694,27 @@ export default function HomeScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => switchSection("simulator")}
+                onPress={() => switchSection("dashboard")}
                 activeOpacity={0.85}
                 accessibilityRole="tab"
-                accessibilityState={{ selected: activeSection === "simulator" }}
+                accessibilityState={{ selected: activeSection === "dashboard" }}
                 style={[
                   pStyles.navTabBtn,
-                  activeSection === "simulator" && pStyles.navTabBtnActive,
+                  activeSection === "dashboard" && pStyles.navTabBtnActive,
                 ]}
               >
                 <Ionicons
-                  name="calculator-outline"
+                  name="shield-checkmark-outline"
                   size={15}
-                  color={activeSection === "simulator" ? "#fff" : "#b9adb2"}
+                  color={activeSection === "dashboard" ? "#fff" : "#b9adb2"}
                 />
                 <Text
                   style={[
                     pStyles.navTabText,
-                    activeSection === "simulator" && pStyles.navTabTextActive,
+                    activeSection === "dashboard" && pStyles.navTabTextActive,
                   ]}
                 >
-                  Simulador & Custos
+                  Painel do Carro
                 </Text>
               </TouchableOpacity>
             </View>
