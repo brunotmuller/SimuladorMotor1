@@ -92,7 +92,7 @@ graph TD
 
 ### [TASK-05] Endpoints REST `/api/auth/*`, middlewares JWT/RBAC e integração no servidor HTTP
 - **Camada:** `api_contract`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-04`
 - **Definição de Conclusão (DoD):**
   - Criar `server/auth/middleware.mjs` com:
@@ -113,7 +113,7 @@ graph TD
 
 ### [TASK-06] Cliente HTTP de autenticação, armazenamento seguro de tokens e renovação automática
 - **Camada:** `service`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-02`, `TASK-05`
 - **Definição de Conclusão (DoD):**
   - Criar `lib/auth/tokenStorage.ts` abstraindo armazenamento de `access_token` e `refresh_token`:
