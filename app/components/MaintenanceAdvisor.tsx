@@ -30,6 +30,38 @@ type MaintenanceEstimate = {
   description: string;
 };
 
+type VehicleCondition = "new" | "used" | "";
+
+type MaintenanceRecord = {
+  lastKm: string;
+  lastDate: string;
+  intervalKm: string;
+  intervalMonths: string;
+  unknown: boolean;
+};
+
+function createInitialRecords(condition: VehicleCondition): Record<string, MaintenanceRecord> {
+  return Object.fromEntries(ESTIMATES.map((item) => [item.id, {
+    lastKm: condition === "new" ? "0" : "",
+    lastDate: "",
+    intervalKm: "",
+    intervalMonths: "",
+    unknown: condition !== "new",
+  }]));
+}
+
+function parseBrazilianDate(value: string): Date | null {
+  const match = value.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return null;
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
 const ESTIMATES: MaintenanceEstimate[] = [
   {
     id: "oil",
@@ -75,8 +107,6 @@ const ESTIMATES: MaintenanceEstimate[] = [
   },
 ];
 
-const KM_PRESETS = [10000, 20000, 40000, 60000, 80000, 100000] as const;
-
 const MODEL_TO_BRAND: { keywords: string[]; brandHint: string }[] = [
   { keywords: ["corolla", "hilux", "yaris", "sw4", "etios"], brandHint: "toyota" },
   { keywords: ["civic", "hr-v", "hrv", "city", "fit", "cr-v"], brandHint: "honda" },
@@ -120,7 +150,9 @@ export default function MaintenanceAdvisor({
   const [modalMarca, setModalMarca] = useState(false);
   const [modalModelo, setModalModelo] = useState(false);
   const [carroDigitado, setCarroDigitado] = useState("");
-  const [currentKm, setCurrentKm] = useState("60000");
+  const [currentKm, setCurrentKm] = useState("");
+  const [vehicleCondition, setVehicleCondition] = useState<VehicleCondition>("");
+  const [records, setRecords] = useState<Record<string, MaintenanceRecord>>(() => createInitialRecords(""));
   const [excludedIds, setExcludedIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -188,6 +220,44 @@ export default function MaintenanceAdvisor({
     );
   }
 
+  function changeVehicleCondition(condition: VehicleCondition) {
+    setVehicleCondition(condition);
+    setRecords(createInitialRecords(condition));
+  }
+
+  function updateRecord(id: string, field: keyof MaintenanceRecord, value: string | boolean) {
+    setRecords((previous) => ({
+      ...previous,
+      [id]: { ...previous[id], [field]: value },
+    }));
+  }
+
+  function getMaintenanceStatus(item: MaintenanceEstimate) {
+    const record = records[item.id];
+    if (!record || record.unknown) return "Histórico não informado";
+    const lastKm = Number(record.lastKm);
+    const intervalKm = Number(record.intervalKm);
+    const intervalMonths = Number(record.intervalMonths);
+    const hasKmData = record.lastKm.trim() !== "" && Number.isFinite(lastKm) && lastKm >= 0 && intervalKm > 0;
+    const lastDate = parseBrazilianDate(record.lastDate);
+    const hasDateData = Boolean(lastDate && intervalMonths > 0);
+    if (!hasKmData && !hasDateData) return "Preencha o histórico e o intervalo do manual";
+
+    const kmRemaining = hasKmData ? lastKm + intervalKm - kmNumber : null;
+    const nextDate = hasDateData && lastDate
+      ? new Date(lastDate.getFullYear(), lastDate.getMonth() + intervalMonths, lastDate.getDate())
+      : null;
+    const dateDue = Boolean(nextDate && new Date() >= nextDate);
+    const kmDue = kmRemaining !== null && kmRemaining <= 0;
+    if (dateDue || kmDue) return "Intervalo atingido: confira a manutenção";
+    if (kmRemaining !== null && kmRemaining <= 1000) {
+      return `Próxima em aproximadamente ${formatKm(Math.max(0, kmRemaining))}`;
+    }
+    if (kmRemaining !== null) return `Próxima em ${formatKm(kmRemaining)}`;
+    if (nextDate) return `Próxima até ${nextDate.toLocaleDateString("pt-BR")}`;
+    return "Dados insuficientes";
+  }
+
   return (
     <View
       nativeID="maintenance-section"
@@ -199,8 +269,7 @@ export default function MaintenanceAdvisor({
       </View>
       <Text style={styles.tituloSecao}>Planejador de manutenção</Text>
       <Text style={styles.descricaoSecao}>
-        Consulte faixas de preços publicadas para serviços comuns e monte uma previsão de gastos.
-        A quilometragem ajuda a contextualizar o planejamento, mas não determina sozinha o que deve ser trocado.
+        Registre o histórico do veículo e informe os intervalos indicados no manual. O sistema só calcula a próxima manutenção quando há dados suficientes.
       </Text>
 
       <View {...(Platform.OS === "web" ? ({ "data-torque-columns": "1" } as object) : {})}>
@@ -272,34 +341,125 @@ export default function MaintenanceAdvisor({
             </TouchableOpacity>
           )}
 
-          <Text style={styles.label}>2. Quilometragem atual (para referência)</Text>
-          <TextInput
-            value={currentKm}
-            onChangeText={(value) => setCurrentKm(value.replace(/[^0-9]/g, "").slice(0, 7))}
-            keyboardType="numeric"
-            placeholder="Ex.: 60000"
-            placeholderTextColor="#6f6267"
-            style={[styles.input, { marginBottom: 10 }]}
-          />
-
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-            {KM_PRESETS.map((preset) => {
-              const active = validKm && kmNumber === preset;
+          <Text style={styles.label}>2. O veículo é novo ou usado?</Text>
+          <View style={{ flexDirection: "row", gap: 8, marginBottom: 14 }}>
+            {(["new", "used"] as const).map((condition) => {
+              const active = vehicleCondition === condition;
               return (
                 <TouchableOpacity
-                  key={preset}
-                  onPress={() => setCurrentKm(String(preset))}
-                  activeOpacity={0.85}
-                  accessibilityRole="button"
-                  style={{ backgroundColor: active ? "#2b161d" : "#151218", borderWidth: 1, borderColor: active ? "#e43b55" : "#33272e", borderRadius: 99, paddingHorizontal: 10, paddingVertical: 6 }}
+                  key={condition}
+                  onPress={() => changeVehicleCondition(condition)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                  style={{ flex: 1, padding: 12, borderRadius: 10, borderWidth: 1, borderColor: active ? "#e43b55" : "#3a2d33", backgroundColor: active ? "#2b161d" : "#151218", alignItems: "center" }}
                 >
-                  <Text style={{ color: active ? "#ff8797" : "#b8a9ae", fontSize: 11, fontWeight: "700" }}>
-                    {formatKm(preset)}
+                  <Text style={{ color: active ? "#ff8797" : "#d1c4c8", fontSize: 13, fontWeight: "800" }}>
+                    {condition === "new" ? "Zero km" : "Usado"}
                   </Text>
                 </TouchableOpacity>
               );
             })}
           </View>
+          {vehicleCondition !== "" && (
+            <Text style={{ color: "#9d8e93", fontSize: 11, lineHeight: 16, marginBottom: 12 }}>
+              {vehicleCondition === "new"
+                ? "O histórico começa em 0 km. Informe a data de entrega se quiser acompanhar também os prazos por tempo."
+                : "Para carro usado, cada item começa sem histórico. Se não souber quando foi feita a manutenção, mantenha essa opção sem registro."}
+            </Text>
+          )}
+
+          <Text style={styles.label}>3. Quilometragem atual</Text>
+          <TextInput
+            value={currentKm}
+            onChangeText={(value) => setCurrentKm(value.replace(/[^0-9]/g, "").slice(0, 7))}
+            keyboardType="numeric"
+            placeholder="Informe a quilometragem atual"
+            placeholderTextColor="#6f6267"
+            style={[styles.input, { marginBottom: 14 }]}
+          />
+
+          <Text style={styles.label}>4. Histórico e intervalos de manutenção</Text>
+          <Text style={{ color: "#9d8e93", fontSize: 11, lineHeight: 16, marginBottom: 10 }}>
+            Para cada serviço, informe a última manutenção e o intervalo recomendado no manual da versão exata do carro. Use km e/ou meses.
+          </Text>
+          {vehicleCondition === "" ? (
+            <Text style={{ color: "#ffb7c1", fontSize: 12, lineHeight: 18, marginBottom: 14 }}>
+              Selecione primeiro se o veículo é zero km ou usado para preencher o histórico.
+            </Text>
+          ) : (
+            ESTIMATES.map((item) => {
+              const record = records[item.id];
+              return (
+                <View key={item.id} style={{ backgroundColor: "#100e13", borderWidth: 1, borderColor: "#34252d", borderRadius: 12, padding: 12, marginBottom: 10 }}>
+                  <Text style={{ color: "#fff", fontSize: 13, fontWeight: "800", marginBottom: 8 }}>{item.name}</Text>
+                  <TouchableOpacity
+                    onPress={() => updateRecord(item.id, "unknown", !record.unknown)}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: record.unknown }}
+                    style={{ flexDirection: "row", alignItems: "center", marginBottom: 10, gap: 8 }}
+                  >
+                    <View style={{ width: 17, height: 17, borderRadius: 4, borderWidth: 1, borderColor: record.unknown ? "#e43b55" : "#66545b", backgroundColor: record.unknown ? "#e43b55" : "transparent", alignItems: "center", justifyContent: "center" }}>
+                      {record.unknown && <Text style={{ color: "#fff", fontSize: 10, fontWeight: "900" }}>✓</Text>}
+                    </View>
+                    <Text style={{ color: "#c6b8bd", fontSize: 11 }}>Não sei / não tenho esse histórico</Text>
+                  </TouchableOpacity>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: "#a8999e", fontSize: 10, marginBottom: 5 }}>Última manutenção (km)</Text>
+                      <TextInput
+                        value={record.lastKm}
+                        editable={!record.unknown}
+                        onChangeText={(value) => updateRecord(item.id, "lastKm", value.replace(/[^0-9]/g, "").slice(0, 7))}
+                        keyboardType="numeric"
+                        placeholder="Ex.: 50000"
+                        placeholderTextColor="#6f6267"
+                        style={[styles.input, { opacity: record.unknown ? 0.45 : 1, marginBottom: 9 }]}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: "#a8999e", fontSize: 10, marginBottom: 5 }}>Data (DD/MM/AAAA)</Text>
+                      <TextInput
+                        value={record.lastDate}
+                        editable={!record.unknown}
+                        onChangeText={(value) => updateRecord(item.id, "lastDate", value.slice(0, 10))}
+                        keyboardType="numbers-and-punctuation"
+                        placeholder="DD/MM/AAAA"
+                        placeholderTextColor="#6f6267"
+                        style={[styles.input, { opacity: record.unknown ? 0.45 : 1, marginBottom: 9 }]}
+                      />
+                    </View>
+                  </View>
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: "#a8999e", fontSize: 10, marginBottom: 5 }}>Intervalo do manual (km)</Text>
+                      <TextInput
+                        value={record.intervalKm}
+                        onChangeText={(value) => updateRecord(item.id, "intervalKm", value.replace(/[^0-9]/g, "").slice(0, 7))}
+                        keyboardType="numeric"
+                        placeholder="Ex.: 10000"
+                        placeholderTextColor="#6f6267"
+                        style={[styles.input, { marginBottom: 8 }]}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: "#a8999e", fontSize: 10, marginBottom: 5 }}>Intervalo do manual (meses)</Text>
+                      <TextInput
+                        value={record.intervalMonths}
+                        onChangeText={(value) => updateRecord(item.id, "intervalMonths", value.replace(/[^0-9]/g, "").slice(0, 3))}
+                        keyboardType="numeric"
+                        placeholder="Ex.: 12"
+                        placeholderTextColor="#6f6267"
+                        style={[styles.input, { marginBottom: 8 }]}
+                      />
+                    </View>
+                  </View>
+                  <Text style={{ color: "#ffb2be", fontSize: 11, lineHeight: 16 }}>
+                    {validKm ? getMaintenanceStatus(item) : "Informe a quilometragem atual para calcular."}
+                  </Text>
+                </View>
+              );
+            })
+          )}
 
           <Text style={{ color: "#9d8e93", fontSize: 11, lineHeight: 17 }}>
             Veículo selecionado: <Text style={{ color: "#e8dde0", fontWeight: "700" }}>{activeVehicleLabel}</Text>
@@ -319,7 +479,7 @@ export default function MaintenanceAdvisor({
                     {activeVehicleLabel.toUpperCase()} • {formatKm(kmNumber)}
                   </Text>
                   <Text style={{ color: "#fff", fontSize: 16, fontWeight: "800", marginTop: 3 }}>
-                    Faixas de preço de referência
+                    Estimativa de custos
                   </Text>
                 </View>
                 <View style={{ alignItems: "flex-end" }}>
@@ -374,12 +534,12 @@ export default function MaintenanceAdvisor({
       </View>
 
       <View style={{ marginTop: 14, padding: 12, backgroundColor: "#171217", borderWidth: 1, borderColor: "#46313a", borderRadius: 10 }}>
-        <Text style={{ color: "#fff", fontSize: 12, fontWeight: "800", marginBottom: 5 }}>Importante: estimativa não é ordem de troca</Text>
+        <Text style={{ color: "#fff", fontSize: 12, fontWeight: "800", marginBottom: 5 }}>Importante: os intervalos precisam vir do manual</Text>
         <Text style={{ color: "#b8a9ae", fontSize: 11, lineHeight: 17 }}>
-          As faixas são referências gerais publicadas no Brasil, não cotações em tempo real nem preços específicos deste carro. O valor muda conforme região, oficina, peça e motorização. A FIPE identifica marca e modelo, mas não fornece plano de manutenção. Para saber quando trocar cada item, consulte o manual da versão exata e o histórico do veículo. Não substitua peças apenas por atingir a quilometragem.
+          A FIPE identifica marca e modelo, mas não fornece o plano de manutenção. Por isso, o TorqueLab não inventa intervalos: preencha os campos com os valores do manual da motorização e ano exatos. O cálculo considera o que ocorrer primeiro entre quilometragem e tempo, quando ambos forem informados. Se o histórico for desconhecido, o sistema não presume que a peça foi trocada nem que está vencida; procure registros ou peça uma inspeção profissional. Em caso de uso severo, siga a orientação específica do fabricante.
         </Text>
         <Text style={{ color: "#9f9095", fontSize: 10, lineHeight: 15, marginTop: 8 }}>
-          Fonte dos preços: Ipiranga, tabela de custos estimados de manutenção; referência consultada em novembro de 2026. Valores de referência: óleo R$ 150–350; filtros R$ 50–150; pastilhas R$ 150–400; pneus R$ 800–2.000; revisão geral R$ 300–800.
+          Os valores de serviços exibidos são faixas aproximadas para planejamento, não uma média estatística de todos os veículos nem uma cotação atual. Solicite orçamento para o modelo e a região.
         </Text>
         <Text style={{ color: "#9f9095", fontSize: 10, lineHeight: 15, marginTop: 4 }}>
           Consulte a fonte: https://www.ipiranga.com.br/wps/portal/pt-br/ipiranga/blog-ipiranga/categorias/dicas-para-motoristas/carro-quanto-custa-manter
