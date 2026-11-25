@@ -24,16 +24,20 @@ import TripCalculator from "../components/TripCalculator";
 import VehicleForm from "../components/VehicleForm";
 import VehicleSelector from "../components/VehicleSelector";
 
+import AccountMenu from "@/components/auth/AccountMenu";
+import AdminPortalShell from "@/components/auth/AdminPortalShell";
+import AuthScreen from "@/components/auth/AuthScreen";
+import RoleGuard from "@/components/auth/RoleGuard";
 import PreventiveDashboard from "@/components/preventive/PreventiveDashboard";
 import ServiceHistorySection from "@/components/preventive/ServiceHistorySection";
 import VehicleRegistrationModal from "@/components/preventive/VehicleRegistrationModal";
 import { pStyles } from "@/components/preventive/styles";
+import { useAuth } from "@/lib/auth/AuthContext";
 import {
   formatKm,
   recordMaintenanceCompletion,
 } from "@/lib/preventive/engine";
 import {
-  DEFAULT_LOCAL_OWNER_ID,
   loadPreventiveStore,
   savePreventiveStore,
 } from "@/lib/preventive/storage";
@@ -74,17 +78,26 @@ const webAttr = (attrs: Record<string, string>) =>
 type AppSection = "dashboard" | "history" | "simulator";
 
 export default function HomeScreen() {
+  const {
+    status: authStatus,
+    activePortal,
+    ownerId,
+    permissionNotice,
+    clearPermissionNotice,
+  } = useAuth();
+
   const scrollRef = useRef<ScrollView>(null);
   const entrada = useRef(new Animated.Value(0)).current;
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevAuthStatusRef = useRef(authStatus);
 
-  // Navegação principal em abas limpas (Painel do Carro é a tela principal)
+  // Navegação principal em abas limpas (Painel do Carro é a tela principal para autenticados)
   const [activeSection, setActiveSection] = useState<AppSection>("simulator");
 
-  // Estado persistido do Assistente Preventivo
+  // Estado persistido do Assistente Preventivo particionado por ownerId
   const [preventiveStore, setPreventiveStore] = useState<PreventiveStoreState>({
     version: 1,
-    ownerId: DEFAULT_LOCAL_OWNER_ID,
+    ownerId,
     activeVehicleId: null,
     vehicles: [],
   });
@@ -167,10 +180,23 @@ export default function HomeScreen() {
     };
   }, []);
 
-  // Carrega persistência do Assistente Preventivo (ou inicia demonstração na 1ª visita)
+  // Ajusta a aba inicial ao entrar como usuário autenticado ou visitante
+  useEffect(() => {
+    const previous = prevAuthStatusRef.current;
+    prevAuthStatusRef.current = authStatus;
+
+    if (authStatus === "authenticated" && previous !== "authenticated") {
+      setActiveSection("dashboard");
+    } else if (authStatus === "guest" && previous !== "guest") {
+      setActiveSection("simulator");
+    }
+  }, [authStatus]);
+
+  // Carrega persistência do Assistente Preventivo sempre que ownerId mudar
   useEffect(() => {
     let ativo = true;
-    loadPreventiveStore(DEFAULT_LOCAL_OWNER_ID).then(async (loaded) => {
+    setStoreReady(false);
+    loadPreventiveStore(ownerId).then((loaded) => {
       if (!ativo) return;
       setPreventiveStore(loaded);
       setStoreReady(true);
@@ -178,7 +204,7 @@ export default function HomeScreen() {
     return () => {
       ativo = false;
     };
-  }, []);
+  }, [ownerId]);
 
   const activeVehicle = useMemo(() => {
     if (preventiveStore.vehicles.length === 0) return null;
@@ -190,32 +216,41 @@ export default function HomeScreen() {
   }, [preventiveStore]);
 
   function persistStore(next: PreventiveStoreState) {
-    setPreventiveStore(next);
-    void savePreventiveStore(next);
+    const scopedNext: PreventiveStoreState = {
+      ...next,
+      ownerId,
+    };
+    setPreventiveStore(scopedNext);
+    void savePreventiveStore(scopedNext);
   }
 
   function handleSaveVehicle(vehicle: PreventiveVehicle, isEdit: boolean) {
+    const ownedVehicle: PreventiveVehicle = {
+      ...vehicle,
+      ownerId,
+    };
+
     if (isEdit) {
       const nextVehicles = preventiveStore.vehicles.map((v) =>
-        v.id === vehicle.id ? vehicle : v
+        v.id === ownedVehicle.id ? ownedVehicle : v
       );
       persistStore({
         ...preventiveStore,
-        activeVehicleId: vehicle.id,
+        activeVehicleId: ownedVehicle.id,
         vehicles: nextVehicles,
       });
       showToast(
-        `Veículo ${vehicle.brand} ${vehicle.model} atualizado com sucesso.`
+        `Veículo ${ownedVehicle.brand} ${ownedVehicle.model} atualizado com sucesso.`
       );
     } else {
-      const nextVehicles = [vehicle, ...preventiveStore.vehicles];
+      const nextVehicles = [ownedVehicle, ...preventiveStore.vehicles];
       persistStore({
         ...preventiveStore,
-        activeVehicleId: vehicle.id,
+        activeVehicleId: ownedVehicle.id,
         vehicles: nextVehicles,
       });
       showToast(
-        `${vehicle.brand} ${vehicle.model} ${vehicle.year} cadastrado! Painel atualizado.`
+        `${ownedVehicle.brand} ${ownedVehicle.model} ${ownedVehicle.year} cadastrado! Painel atualizado.`
       );
     }
     setEditingVehicle(null);
@@ -605,6 +640,86 @@ export default function HomeScreen() {
 
   const historyCount = activeVehicle?.history.length ?? 0;
 
+  if (authStatus === "loading") {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "#09090c",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: 24,
+        }}
+      >
+        <Image
+          source={require("../../assets/images/torquelab-logo.png")}
+          style={{ height: 56, width: 156, marginBottom: 20 }}
+          resizeMode="contain"
+          accessibilityLabel="TorqueLab"
+        />
+        <ActivityIndicator color="#e43b55" size="large" />
+        <Text
+          style={{
+            color: "#b7aab0",
+            fontSize: 13,
+            fontWeight: "600",
+            marginTop: 14,
+          }}
+        >
+          Verificando sua sessão...
+        </Text>
+      </View>
+    );
+  }
+
+  if (authStatus === "unauthenticated") {
+    return <AuthScreen />;
+  }
+
+  if (authStatus === "authenticated" && activePortal === "admin") {
+    return (
+      <ScrollView
+        ref={scrollRef}
+        style={styles.container}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View
+          style={pStyles.navShell}
+          {...webAttr({ "data-torque-mode-topbar": "1" })}
+        >
+          <View style={pStyles.navBrandRow}>
+            <Image
+              source={require("../../assets/images/torquelab-logo.png")}
+              style={[styles.logoImagem, { height: 52, width: 138 }]}
+              resizeMode="contain"
+              accessibilityLabel="TorqueLab"
+            />
+          </View>
+
+          <AccountMenu />
+        </View>
+
+        <RoleGuard requiredRole="admin">
+          <AdminPortalShell />
+        </RoleGuard>
+
+        <View style={styles.footer}>
+          <Image
+            source={require("../../assets/images/torquelab-logo.png")}
+            style={styles.footerLogoImagem}
+            resizeMode="contain"
+            accessibilityLabel="TorqueLab"
+          />
+          <Text style={styles.footerTexto}>
+            TorqueLab · Painel Administrativo • {new Date().getFullYear()}
+          </Text>
+        </View>
+      </ScrollView>
+    );
+  }
+
   return (
     <>
       <ScrollView
@@ -718,7 +833,51 @@ export default function HomeScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+
+            <AccountMenu />
           </View>
+
+          {permissionNotice && (
+            <View
+              accessibilityRole="alert"
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 10,
+                backgroundColor: "rgba(239, 68, 68, 0.14)",
+                borderWidth: 1,
+                borderColor: "rgba(239, 68, 68, 0.42)",
+                borderRadius: 14,
+                paddingHorizontal: 14,
+                paddingVertical: 12,
+                marginBottom: 16,
+              }}
+            >
+              <Ionicons name="lock-closed-outline" size={18} color="#fca5a5" />
+              <Text
+                style={{
+                  flex: 1,
+                  color: "#fecaca",
+                  fontSize: 13,
+                  fontWeight: "700",
+                  lineHeight: 19,
+                }}
+              >
+                {permissionNotice}
+              </Text>
+              <TouchableOpacity
+                onPress={clearPermissionNotice}
+                accessibilityRole="button"
+                accessibilityLabel="Fechar aviso de permissão"
+                style={{
+                  padding: 4,
+                  borderRadius: 8,
+                }}
+              >
+                <Ionicons name="close" size={18} color="#fecaca" />
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* ABA 1: DASHBOARD PRINCIPAL DE MANUTENÇÃO PREVENTIVA */}
           {activeSection === "dashboard" && (
