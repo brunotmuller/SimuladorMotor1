@@ -197,6 +197,19 @@ export default function WebPolish() {
       }
 
       @media (max-width: 640px) {
+        [data-torque-mode-topbar] {
+          flex-direction: column !important;
+          align-items: stretch !important;
+        }
+        [data-torque-mode-nav] {
+          width: 100% !important;
+          justify-content: space-between !important;
+          flex-wrap: wrap !important;
+        }
+        [data-torque-mode-nav] > * {
+          flex: 1 1 auto !important;
+          justify-content: center !important;
+        }
         [data-torque-topbar] {
           padding: 4px 0 14px;
           margin-bottom: 16px;

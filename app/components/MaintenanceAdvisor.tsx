@@ -397,7 +397,7 @@ export default function MaintenanceAdvisor({
       {...(Platform.OS === "web" ? ({ "data-torque-card": "1" } as object) : {})}
     >
       <View style={styles.sectionKicker}>
-        <Text style={styles.sectionKickerText}>04 / REVISÃO & CUSTOS</Text>
+        <Text style={styles.sectionKickerText}>03 / REVISÃO & CUSTOS</Text>
       </View>
       <Text style={styles.tituloSecao}>Calculadora de manutenção</Text>
       <Text style={styles.descricaoSecao}>

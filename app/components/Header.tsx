@@ -40,10 +40,8 @@ export default function Header({ online, carregando }: Props) {
   }
 
   const links = [
-    { label: "Exemplos", selector: "#examples-section" },
     { label: "Simulador", selector: "#simulator-section" },
     { label: "Garagem", selector: "#garage-section" },
-    { label: "Explorar", selector: "#explore-section" },
     { label: "Manutenção", selector: "#maintenance-section" },
   ];
 
@@ -179,8 +177,7 @@ export default function Header({ online, carregando }: Props) {
               </Text>
               <Text style={styles.subtitulo}>
                 Consulte a Tabela FIPE, simule consumo e estado geral do veículo e
-                tome decisões com mais clareza — ou teste um exemplo pronto em 1
-                clique.
+                tome decisões com mais clareza.
               </Text>
 
               <View
@@ -206,23 +203,6 @@ export default function Header({ online, carregando }: Props) {
                 >
                   <Text style={{ color: "#fff", fontSize: 13, fontWeight: "800" }}>
                     Começar análise ↓
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => irPara("#examples-section")}
-                  activeOpacity={0.85}
-                  style={{
-                    backgroundColor: "rgba(18,15,21,0.78)",
-                    borderWidth: 1,
-                    borderColor: "#755560",
-                    borderRadius: 12,
-                    paddingHorizontal: 20,
-                    paddingVertical: 14,
-                  }}
-                  accessibilityRole="button"
-                >
-                  <Text style={{ color: "#fff", fontSize: 13, fontWeight: "700" }}>
-                    Ver exemplos prontos
                   </Text>
                 </TouchableOpacity>
               </View>

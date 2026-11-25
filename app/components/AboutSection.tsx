@@ -11,7 +11,7 @@ export default function AboutSection() {
       {...(Platform.OS === "web" ? ({ "data-torque-card": "1" } as object) : {})}
     >
       <View style={styles.sectionKicker}>
-        <Text style={styles.sectionKickerText}>05 / TORQUELAB</Text>
+        <Text style={styles.sectionKickerText}>04 / TORQUELAB</Text>
       </View>
 
       <Text style={styles.tituloSecao}>Sobre o projeto</Text>
