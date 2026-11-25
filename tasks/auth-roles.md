@@ -79,7 +79,7 @@ graph TD
 
 ### [TASK-04] Serviço de autenticação, rotação de refresh token e proteção contra força bruta
 - **Camada:** `service`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-02`, `TASK-03`
 - **Definição de Conclusão (DoD):**
   - Criar `server/auth/authService.mjs` com injeção de `db` e `clock` (facilitando testes determinísticos) implementando:
@@ -92,7 +92,7 @@ graph TD
 
 ### [TASK-05] Endpoints REST `/api/auth/*`, middlewares JWT/RBAC e integração no servidor HTTP
 - **Camada:** `api_contract`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-04`
 - **Definição de Conclusão (DoD):**
   - Criar `server/auth/middleware.mjs` com:
