@@ -134,7 +134,7 @@ graph TD
 
 ### [TASK-07] Dashboard Principal do Usuário e integração com o Simulador Completo
 - **Camada:** `ui`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-05`, `TASK-06`
 - **Definição de Conclusão (DoD):**
   - Criar `components/dashboard/UserDashboardView.tsx` no tema visual TorqueLab (dark + crimson, mobile-first e responsivo) implementando integralmente:
@@ -150,7 +150,7 @@ graph TD
 
 ### [TASK-08] Testes de aceitação BDD (`spec-verifier`) e validação de build
 - **Camada:** `test`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-04`, `TASK-07`
 - **Definição de Conclusão (DoD):**
   - Criar `server/dashboard/dashboard.test.mjs` usando `node --test` + SQLite `:memory:` cobrindo todos os cenários BDD e regras:
