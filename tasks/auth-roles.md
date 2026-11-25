@@ -127,7 +127,7 @@ graph TD
 
 ### [TASK-07] Contexto global de sessão, restauração no boot e integração com `ownerId`
 - **Camada:** `service`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-06`
 - **Definição de Conclusão (DoD):**
   - Criar `lib/auth/AuthContext.tsx` provendo `AuthProvider` e hook `useAuth()` com estados: `status` (`"loading" | "authenticated" | "unauthenticated" | "guest"`), `user`, `activePortal` (`"user" | "admin"`), `authError`, além das ações `signIn`, `signUp`, `signOut`, `enterGuestMode`, `switchAdminPortal(portal)`.
@@ -140,7 +140,7 @@ graph TD
 
 ### [TASK-08] Telas de Login/Cadastro, modo visitante, menu de conta e guarda RBAC na UI
 - **Camada:** `ui`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-07`
 - **Definição de Conclusão (DoD):**
   - Criar `components/auth/AuthScreen.tsx` seguindo a identidade visual dark + crimson do TorqueLab (mobile-first e responsivo):
