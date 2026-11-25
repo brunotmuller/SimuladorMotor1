@@ -1,7 +1,7 @@
 # Dashboard do Usuário (Veículos e Manutenções) - Plano Técnico de Tarefas
 
 - **Especificação:** `specs/user-dashboard.md`
-- **Status Geral:** `pending`
+- **Status Geral:** `approved`
 
 ## Grafo de Dependências
 
@@ -150,7 +150,7 @@ graph TD
 
 ### [TASK-08] Testes de aceitação BDD (`spec-verifier`) e validação de build
 - **Camada:** `test`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-04`, `TASK-07`
 - **Definição de Conclusão (DoD):**
   - Criar `server/dashboard/dashboard.test.mjs` usando `node --test` + SQLite `:memory:` cobrindo todos os cenários BDD e regras:
