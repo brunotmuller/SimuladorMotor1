@@ -105,7 +105,7 @@ graph TD
 
 ### [TASK-05] Cliente HTTP do Dashboard e camada de cache local resiliente
 - **Camada:** `service`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-01`, `TASK-04`
 - **Definição de Conclusão (DoD):**
   - Criar `lib/dashboard/dashboardClient.ts` (puro TypeScript sem imports de React Native, recebendo `authClient` injetável para testes):
@@ -118,7 +118,7 @@ graph TD
 
 ### [TASK-06] Modais de cadastro/edição de veículo, hodômetro com confirmação e registro de manutenção
 - **Camada:** `ui`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-05`
 - **Definição de Conclusão (DoD):**
   - Criar `components/dashboard/UserVehicleModal.tsx`:
