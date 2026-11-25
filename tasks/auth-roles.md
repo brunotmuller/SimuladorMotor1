@@ -50,7 +50,7 @@ graph TD
 
 ### [TASK-02] Schema de banco SQLite, migração inicial, seed admin e tipagens compartilhadas
 - **Camada:** `data_model`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-01`
 - **Definição de Conclusão (DoD):**
   - Criar `server/auth/db.mjs` inicializando SQLite (`node:sqlite` `DatabaseSync`) com criação idempotente das tabelas:
@@ -63,7 +63,7 @@ graph TD
 
 ### [TASK-03] Utilitários de criptografia, JWT e validação de payloads
 - **Camada:** `service`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-02`
 - **Definição de Conclusão (DoD):**
   - Criar `server/auth/crypto.mjs` implementando:
