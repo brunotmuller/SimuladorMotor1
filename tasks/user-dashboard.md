@@ -70,7 +70,7 @@ graph TD
 
 ### [TASK-03] Serviço de garagem multi-veículo, registros de manutenção e agregação do Dashboard
 - **Camada:** `service`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-01`, `TASK-02`
 - **Definição de Conclusão (DoD):**
   - Criar `server/dashboard/dashboardService.mjs` com `DashboardError(status, message, options)` e `createDashboardService({ db, now = () => Date.now() })`:
@@ -86,7 +86,7 @@ graph TD
 
 ### [TASK-04] Endpoints REST do Dashboard e integração em `server/index.mjs`
 - **Camada:** `api_contract`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-03`
 - **Definição de Conclusão (DoD):**
   - Criar `server/dashboard/routes.mjs` exportando `createDashboardRouter({ db, getDb, config, now })` protegendo **todas** as rotas com `authenticateRequest` (HTTP `401` se não autenticado — `RN-03`):
