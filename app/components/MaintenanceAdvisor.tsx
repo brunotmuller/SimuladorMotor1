@@ -154,6 +154,8 @@ export default function MaintenanceAdvisor({
   const [vehicleCondition, setVehicleCondition] = useState<VehicleCondition>("");
   const [records, setRecords] = useState<Record<string, MaintenanceRecord>>(() => createInitialRecords(""));
   const [excludedIds, setExcludedIds] = useState<string[]>([]);
+  const [storageReady, setStorageReady] = useState(false);
+  const [saveError, setSaveError] = useState("");
 
   useEffect(() => {
     if (veiculoAtual) {
@@ -162,6 +164,48 @@ export default function MaintenanceAdvisor({
       setCarroDigitado("");
     }
   }, [veiculoAtual]);
+
+  // Recupera o último preenchimento salvo neste navegador.
+  useEffect(() => {
+    if (Platform.OS !== "web") {
+      setStorageReady(true);
+      return;
+    }
+    try {
+      const saved = window.localStorage.getItem("torquelab:maintenance:v1");
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (typeof data.currentKm === "string") setCurrentKm(data.currentKm);
+        if (data.vehicleCondition === "new" || data.vehicleCondition === "used") {
+          setVehicleCondition(data.vehicleCondition);
+        }
+        if (data.records && typeof data.records === "object") {
+          setRecords({ ...createInitialRecords(""), ...data.records });
+        }
+        if (Array.isArray(data.excludedIds)) setExcludedIds(data.excludedIds);
+      }
+    } catch {
+      setSaveError("Não foi possível recuperar os dados salvos neste navegador.");
+    } finally {
+      setStorageReady(true);
+    }
+  }, []);
+
+  // Salva automaticamente a cada alteração, sem botão.
+  useEffect(() => {
+    if (!storageReady || Platform.OS !== "web") return;
+    try {
+      window.localStorage.setItem("torquelab:maintenance:v1", JSON.stringify({
+        currentKm,
+        vehicleCondition,
+        records,
+        excludedIds,
+      }));
+      setSaveError("");
+    } catch {
+      setSaveError("Não foi possível salvar. Verifique o espaço disponível no navegador.");
+    }
+  }, [storageReady, currentKm, vehicleCondition, records, excludedIds]);
 
   async function selecionarMarcaFipe(item: ItemAPI, abrirModelosDepois = false) {
     setMarca(item);
@@ -463,6 +507,9 @@ export default function MaintenanceAdvisor({
 
           <Text style={{ color: "#9d8e93", fontSize: 11, lineHeight: 17 }}>
             Veículo selecionado: <Text style={{ color: "#e8dde0", fontWeight: "700" }}>{activeVehicleLabel}</Text>
+          </Text>
+          <Text style={{ color: saveError ? "#ff8797" : "#78c99a", fontSize: 10, marginTop: 8 }}>
+            {saveError || (storageReady ? "✓ Salvamento automático ativado neste navegador" : "Carregando dados salvos...")}
           </Text>
         </View>
 
