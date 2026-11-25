@@ -113,7 +113,7 @@ graph TD
 
 ### [TASK-06] Cliente HTTP de autenticação, armazenamento seguro de tokens e renovação automática
 - **Camada:** `service`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-02`, `TASK-05`
 - **Definição de Conclusão (DoD):**
   - Criar `lib/auth/tokenStorage.ts` abstraindo armazenamento de `access_token` e `refresh_token`:
@@ -127,7 +127,7 @@ graph TD
 
 ### [TASK-07] Contexto global de sessão, restauração no boot e integração com `ownerId`
 - **Camada:** `service`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-06`
 - **Definição de Conclusão (DoD):**
   - Criar `lib/auth/AuthContext.tsx` provendo `AuthProvider` e hook `useAuth()` com estados: `status` (`"loading" | "authenticated" | "unauthenticated" | "guest"`), `user`, `activePortal` (`"user" | "admin"`), `authError`, além das ações `signIn`, `signUp`, `signOut`, `enterGuestMode`, `switchAdminPortal(portal)`.
