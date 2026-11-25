@@ -86,7 +86,7 @@ graph TD
 
 ### [TASK-04] Endpoints REST do Dashboard e integração em `server/index.mjs`
 - **Camada:** `api_contract`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-03`
 - **Definição de Conclusão (DoD):**
   - Criar `server/dashboard/routes.mjs` exportando `createDashboardRouter({ db, getDb, config, now })` protegendo **todas** as rotas com `authenticateRequest` (HTTP `401` se não autenticado — `RN-03`):
@@ -105,7 +105,7 @@ graph TD
 
 ### [TASK-05] Cliente HTTP do Dashboard e camada de cache local resiliente
 - **Camada:** `service`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-01`, `TASK-04`
 - **Definição de Conclusão (DoD):**
   - Criar `lib/dashboard/dashboardClient.ts` (puro TypeScript sem imports de React Native, recebendo `authClient` injetável para testes):

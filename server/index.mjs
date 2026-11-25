@@ -5,6 +5,7 @@ import { loadAuthConfig } from "./auth/config.mjs";
 import { hashPassword } from "./auth/crypto.mjs";
 import { openAuthDatabase, seedInitialAdmin } from "./auth/db.mjs";
 import { createAuthRouter, isDatabaseError } from "./auth/routes.mjs";
+import { createDashboardRouter } from "./dashboard/routes.mjs";
 import { fetchFalconImage, fetchFalconPlate } from "./falcon.mjs";
 import { createStaticWebHandler } from "./static.mjs";
 
@@ -112,6 +113,13 @@ export function createAppServer({
     now,
   });
 
+  const handleDashboardRoute = createDashboardRouter({
+    db: authDb,
+    getDb: ensureAuthDb,
+    config,
+    now,
+  });
+
   const handleStaticWeb = serveWebDist
     ? createStaticWebHandler({ distDir: webDistDir, basePath: webBasePath })
     : null;
@@ -151,7 +159,8 @@ export function createAppServer({
         return response.writeHead(204).end();
       }
 
-      const path = new URL(request.url ?? "/", "http://localhost").pathname;
+      const urlObj = new URL(request.url ?? "/", "http://localhost");
+      const path = urlObj.pathname;
 
       if (path === "/api/health") {
         if (request.method !== "GET" && request.method !== "HEAD") {
@@ -162,6 +171,16 @@ export function createAppServer({
 
       const handledByAuth = await handleAuthRoute(request, response, path, json);
       if (handledByAuth) {
+        return;
+      }
+
+      const handledByDashboard = await handleDashboardRoute(
+        request,
+        response,
+        urlObj,
+        json,
+      );
+      if (handledByDashboard) {
         return;
       }
 
