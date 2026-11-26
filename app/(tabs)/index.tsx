@@ -28,12 +28,17 @@ import AccountMenu from "@/components/auth/AccountMenu";
 import AdminPortalShell from "@/components/auth/AdminPortalShell";
 import AuthScreen from "@/components/auth/AuthScreen";
 import RoleGuard from "@/components/auth/RoleGuard";
+import UserDashboardView from "@/components/dashboard/UserDashboardView";
 import PreventiveDashboard from "@/components/preventive/PreventiveDashboard";
 import ServiceHistorySection from "@/components/preventive/ServiceHistorySection";
 import VehicleRegistrationModal from "@/components/preventive/VehicleRegistrationModal";
 import { pStyles } from "@/components/preventive/styles";
 import { useAuth } from "@/lib/auth/AuthContext";
+import { DashboardClientError } from "@/lib/dashboard/dashboardClient";
+import { defaultDashboardClient } from "@/lib/dashboard/defaultDashboardClient";
+import type { DashboardResponse, UserVehicle } from "@/lib/dashboard/types";
 import {
+  formatDateBR,
   formatKm,
   recordMaintenanceCompletion,
 } from "@/lib/preventive/engine";
@@ -107,6 +112,19 @@ export default function HomeScreen() {
     null
   );
   const [toastMessage, setToastMessage] = useState("");
+
+  // Estado do Dashboard do Usuário autenticado (integrado ao backend e ao Simulador)
+  const [dashboardRefreshToken, setDashboardRefreshToken] = useState(0);
+  const [dashboardSnapshot, setDashboardSnapshot] =
+    useState<DashboardResponse | null>(null);
+  const [linkedDashboardVehicle, setLinkedDashboardVehicle] =
+    useState<UserVehicle | null>(null);
+  const [syncingToDashboard, setSyncingToDashboard] = useState(false);
+  const [dashboardSyncMessage, setDashboardSyncMessage] = useState("");
+  const [dashboardSyncError, setDashboardSyncError] = useState("");
+  const [switchingHistoryVehicleId, setSwitchingHistoryVehicleId] = useState<
+    string | null
+  >(null);
 
   // Estado do Simulador FIPE existente (preservado integralmente)
   const [marcas, setMarcas] = useState<ItemAPI[]>([]);
@@ -191,6 +209,14 @@ export default function HomeScreen() {
       setActiveSection("simulator");
     }
   }, [authStatus]);
+
+  // Limpa vínculo do Dashboard quando a conta/sessão muda
+  useEffect(() => {
+    setDashboardSnapshot(null);
+    setLinkedDashboardVehicle(null);
+    setDashboardSyncMessage("");
+    setDashboardSyncError("");
+  }, [ownerId, authStatus]);
 
   // Carrega persistência do Assistente Preventivo sempre que ownerId mudar
   useEffect(() => {
@@ -356,6 +382,101 @@ export default function HomeScreen() {
   function switchSection(section: AppSection) {
     setActiveSection(section);
     scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }
+
+  function handleOpenFullSimulatorFromDashboard(vehicle: UserVehicle) {
+    const modelDisplay = vehicle.version
+      ? `${vehicle.model} ${vehicle.version}`
+      : vehicle.model;
+
+    setLinkedDashboardVehicle(vehicle);
+    setModoDemonstracao(false);
+    setMarca({ code: `dash-brand-${vehicle.id}`, name: vehicle.brand });
+    setModelo({ code: `dash-model-${vehicle.id}`, name: modelDisplay });
+    setAno({
+      code: `dash-year-${vehicle.id}`,
+      name: `${vehicle.year} ${vehicle.fuel}`,
+    });
+    setDadosFipe({
+      brand: vehicle.brand,
+      model: modelDisplay,
+      modelYear: vehicle.year,
+      fuel: vehicle.fuel,
+      price: vehicle.fipePrice || "Valor de referência",
+      codeFipe: vehicle.fipeCode || "DASHBOARD",
+    });
+    setKm(String(vehicle.currentKm));
+    setMesesUltimaRevisao(String(vehicle.lastRevisionMonths));
+    setResultado(null);
+    setDadosAnalisados(null);
+    setAnaliseSalvaId(null);
+    setMensagem("");
+    setDashboardSyncMessage("");
+    setDashboardSyncError("");
+    setAvisoSalvamento(
+      `Simulador pré-preenchido com ${vehicle.brand} ${vehicle.model} ${vehicle.year}. Ajuste peso, calibragem, pneus e tipo de uso para recalcular a nota de saúde do Dashboard.`
+    );
+    switchSection("simulator");
+  }
+
+  async function handleSyncSimulatorToDashboard() {
+    if (
+      !linkedDashboardVehicle ||
+      !resultado ||
+      !dadosAnalisados ||
+      syncingToDashboard
+    ) {
+      return;
+    }
+
+    setSyncingToDashboard(true);
+    setDashboardSyncMessage("");
+    setDashboardSyncError("");
+
+    try {
+      const { vehicle: updatedVehicle, dashboard } =
+        await defaultDashboardClient.updateVehicle(linkedDashboardVehicle.id, {
+          healthScore: resultado.nota,
+          estimatedConsumption: resultado.consumo,
+          currentKm: dadosAnalisados.km,
+          lastRevisionMonths: dadosAnalisados.mesesUltimaRevisao,
+          confirmKmRegression: true,
+        });
+
+      setLinkedDashboardVehicle(updatedVehicle);
+      setDashboardSnapshot(dashboard);
+      setDashboardRefreshToken((prev) => prev + 1);
+      setDashboardSyncMessage(
+        `Nota de saúde (${resultado.nota}/100) e consumo (${resultado.consumo
+          .toFixed(1)
+          .replace(".", ",")} km/L) salvos em ${updatedVehicle.brand} ${
+          updatedVehicle.model
+        } no Dashboard!`
+      );
+    } catch (err) {
+      const message =
+        err instanceof DashboardClientError
+          ? err.message
+          : "Não foi possível atualizar o veículo no Dashboard. Tente novamente.";
+      setDashboardSyncError(message);
+    } finally {
+      setSyncingToDashboard(false);
+    }
+  }
+
+  async function handleSelectDashboardHistoryVehicle(vehicleId: string) {
+    if (switchingHistoryVehicleId) return;
+    setSwitchingHistoryVehicleId(vehicleId);
+    try {
+      const nextDashboard =
+        await defaultDashboardClient.selectVehicle(vehicleId);
+      setDashboardSnapshot(nextDashboard);
+      setDashboardRefreshToken((prev) => prev + 1);
+    } catch {
+      // Silencioso: o usuário pode recarregar na aba Painel do Carro.
+    } finally {
+      setSwitchingHistoryVehicleId(null);
+    }
   }
 
   // ===== Funções originais do Simulador FIPE (preservadas) =====
@@ -623,22 +744,45 @@ export default function HomeScreen() {
     outputRange: [12, 0],
   });
 
+  const dashboardActiveVehicle = dashboardSnapshot?.activeVehicle ?? null;
+
   const advisorVehicle =
     marca && modelo && !modoDemonstracao
       ? { marca, modelo }
-      : activeVehicle
+      : authStatus === "authenticated" && dashboardActiveVehicle
         ? {
-            marca: { code: `veh-${activeVehicle.id}`, name: activeVehicle.brand },
+            marca: {
+              code: `dash-${dashboardActiveVehicle.id}`,
+              name: dashboardActiveVehicle.brand,
+            },
             modelo: {
-              code: `mod-${activeVehicle.id}`,
-              name: `${activeVehicle.model}${
-                activeVehicle.version ? ` ${activeVehicle.version}` : ""
+              code: `dash-mod-${dashboardActiveVehicle.id}`,
+              name: `${dashboardActiveVehicle.model}${
+                dashboardActiveVehicle.version
+                  ? ` ${dashboardActiveVehicle.version}`
+                  : ""
               }`,
             },
           }
-        : null;
+        : activeVehicle
+          ? {
+              marca: {
+                code: `veh-${activeVehicle.id}`,
+                name: activeVehicle.brand,
+              },
+              modelo: {
+                code: `mod-${activeVehicle.id}`,
+                name: `${activeVehicle.model}${
+                  activeVehicle.version ? ` ${activeVehicle.version}` : ""
+                }`,
+              },
+            }
+          : null;
 
-  const historyCount = activeVehicle?.history.length ?? 0;
+  const historyCount =
+    authStatus === "authenticated"
+      ? (dashboardSnapshot?.history.length ?? 0)
+      : (activeVehicle?.history.length ?? 0);
 
   if (authStatus === "loading") {
     return (
@@ -882,7 +1026,16 @@ export default function HomeScreen() {
           {/* ABA 1: DASHBOARD PRINCIPAL DE MANUTENÇÃO PREVENTIVA */}
           {activeSection === "dashboard" && (
             <>
-              {!storeReady ? (
+              {authStatus === "authenticated" ? (
+                <UserDashboardView
+                  ownerId={ownerId}
+                  marcasFipe={marcas}
+                  carregandoMarcasFipe={carregandoMarcas}
+                  onOpenFullSimulator={handleOpenFullSimulatorFromDashboard}
+                  refreshToken={dashboardRefreshToken}
+                  onDashboardSnapshotChange={setDashboardSnapshot}
+                />
+              ) : !storeReady ? (
                 <View style={[pStyles.summaryCard, { alignItems: "center", padding: 36 }]}>
                   <ActivityIndicator color="#e43b55" size="large" />
                   <Text style={{ color: "#b7aab0", marginTop: 12, fontSize: 13 }}>
@@ -918,48 +1071,212 @@ export default function HomeScreen() {
           {/* ABA 2: PÁGINA DEDICADA DE HISTÓRICO DE SERVIÇOS */}
           {activeSection === "history" && (
             <View>
-              {activeVehicle && (
-                <View style={pStyles.vehicleSwitcherRow}>
-                  {preventiveStore.vehicles.map((veh) => {
-                    const isCurrent = veh.id === activeVehicle.id;
-                    return (
-                      <TouchableOpacity
-                        key={veh.id}
-                        onPress={() => handleSelectVehicle(veh.id)}
-                        style={[
-                          pStyles.vehiclePill,
-                          isCurrent && pStyles.vehiclePillActive,
-                        ]}
-                        accessibilityRole="button"
-                      >
-                        <Ionicons
-                          name="car-outline"
-                          size={14}
-                          color={isCurrent ? "#ff8c9b" : "#9c8f95"}
-                        />
-                        <Text
-                          style={[
-                            pStyles.vehiclePillText,
-                            isCurrent && pStyles.vehiclePillTextActive,
-                          ]}
-                        >
-                          {veh.brand} {veh.model} {veh.year}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
+              {authStatus === "authenticated" ? (
+                <View style={{ gap: 14 }}>
+                  {dashboardSnapshot && dashboardSnapshot.vehicles.length > 0 && (
+                    <View style={pStyles.vehicleSwitcherRow}>
+                      {dashboardSnapshot.vehicles.map((veh) => {
+                        const isCurrent =
+                          veh.id === dashboardSnapshot.activeVehicle?.id;
+                        return (
+                          <TouchableOpacity
+                            key={veh.id}
+                            onPress={() =>
+                              void handleSelectDashboardHistoryVehicle(veh.id)
+                            }
+                            disabled={Boolean(switchingHistoryVehicleId)}
+                            style={[
+                              pStyles.vehiclePill,
+                              isCurrent && pStyles.vehiclePillActive,
+                            ]}
+                            accessibilityRole="button"
+                          >
+                            {switchingHistoryVehicleId === veh.id ? (
+                              <ActivityIndicator size="small" color="#ff8c9b" />
+                            ) : (
+                              <Ionicons
+                                name="car-outline"
+                                size={14}
+                                color={isCurrent ? "#ff8c9b" : "#9c8f95"}
+                              />
+                            )}
+                            <Text
+                              style={[
+                                pStyles.vehiclePillText,
+                                isCurrent && pStyles.vehiclePillTextActive,
+                              ]}
+                            >
+                              {veh.nickname ||
+                                `${veh.brand} ${veh.model} ${veh.year}`}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
 
-              <ServiceHistorySection
-                vehicleLabel={
-                  activeVehicle
-                    ? `${activeVehicle.brand} ${activeVehicle.model} ${activeVehicle.year}`
-                    : "Nenhum veículo"
-                }
-                history={activeVehicle?.history ?? []}
-                compact={false}
-              />
+                  <View style={pStyles.summaryCard}>
+                    <Text style={pStyles.sectionEyebrow}>
+                      HISTÓRICO SINCRONIZADO
+                    </Text>
+                    <Text style={pStyles.sectionTitle}>
+                      {dashboardSnapshot?.activeVehicle
+                        ? `${dashboardSnapshot.activeVehicle.brand} ${dashboardSnapshot.activeVehicle.model} ${dashboardSnapshot.activeVehicle.year}`
+                        : "Nenhum veículo selecionado"}
+                    </Text>
+                    <Text style={pStyles.sectionSubtitle}>
+                      Manutenções concluídas registradas no seu Dashboard (os
+                      valores reais pagos ficam preservados no histórico).
+                    </Text>
+
+                    {!dashboardSnapshot ||
+                    dashboardSnapshot.history.length === 0 ? (
+                      <Text
+                        style={{
+                          color: "#a99ca2",
+                          fontSize: 13,
+                          marginTop: 14,
+                          lineHeight: 20,
+                        }}
+                      >
+                        Nenhuma manutenção registrada para este veículo ainda.
+                        Acesse o Painel do Carro e clique em “Marcar como
+                        realizada” para adicionar ao histórico.
+                      </Text>
+                    ) : (
+                      <View style={{ gap: 10, marginTop: 16 }}>
+                        {dashboardSnapshot.history.map((log) => (
+                          <View
+                            key={log.id}
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              flexWrap: "wrap",
+                              gap: 12,
+                              backgroundColor: "#181622",
+                              borderWidth: 1,
+                              borderColor: "rgba(255,255,255,0.08)",
+                              borderRadius: 14,
+                              padding: 13,
+                            }}
+                          >
+                            <Ionicons
+                              name="checkmark-done-circle"
+                              size={20}
+                              color="#86efac"
+                            />
+                            <View style={{ flex: 1, minWidth: 170 }}>
+                              <Text
+                                style={{
+                                  color: "#ffffff",
+                                  fontSize: 14,
+                                  fontWeight: "800",
+                                }}
+                              >
+                                {log.serviceName}
+                              </Text>
+                              <Text
+                                style={{
+                                  color: "#b7aab0",
+                                  fontSize: 12,
+                                  marginTop: 2,
+                                }}
+                              >
+                                {formatDateBR(log.performedAt)} ·{" "}
+                                {formatKm(log.performedKm)}
+                              </Text>
+                              {log.notes && (
+                                <Text
+                                  style={{
+                                    color: "#968a90",
+                                    fontSize: 11,
+                                    marginTop: 3,
+                                  }}
+                                >
+                                  {log.notes}
+                                </Text>
+                              )}
+                            </View>
+                            <View style={{ alignItems: "flex-end" }}>
+                              <Text
+                                style={{
+                                  color: "#9c8f95",
+                                  fontSize: 10,
+                                  fontWeight: "700",
+                                }}
+                              >
+                                {log.paidCost !== null
+                                  ? "Valor pago"
+                                  : "Estimado"}
+                              </Text>
+                              <Text
+                                style={{
+                                  color: "#ffffff",
+                                  fontSize: 15,
+                                  fontWeight: "900",
+                                }}
+                              >
+                                {(log.paidCost !== null
+                                  ? log.paidCost
+                                  : log.estimatedCost
+                                ).toLocaleString("pt-BR", {
+                                  style: "currency",
+                                  currency: "BRL",
+                                })}
+                              </Text>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                </View>
+              ) : (
+                <>
+                  {activeVehicle && (
+                    <View style={pStyles.vehicleSwitcherRow}>
+                      {preventiveStore.vehicles.map((veh) => {
+                        const isCurrent = veh.id === activeVehicle.id;
+                        return (
+                          <TouchableOpacity
+                            key={veh.id}
+                            onPress={() => handleSelectVehicle(veh.id)}
+                            style={[
+                              pStyles.vehiclePill,
+                              isCurrent && pStyles.vehiclePillActive,
+                            ]}
+                            accessibilityRole="button"
+                          >
+                            <Ionicons
+                              name="car-outline"
+                              size={14}
+                              color={isCurrent ? "#ff8c9b" : "#9c8f95"}
+                            />
+                            <Text
+                              style={[
+                                pStyles.vehiclePillText,
+                                isCurrent && pStyles.vehiclePillTextActive,
+                              ]}
+                            >
+                              {veh.brand} {veh.model} {veh.year}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
+
+                  <ServiceHistorySection
+                    vehicleLabel={
+                      activeVehicle
+                        ? `${activeVehicle.brand} ${activeVehicle.model} ${activeVehicle.year}`
+                        : "Nenhum veículo"
+                    }
+                    history={activeVehicle?.history ?? []}
+                    compact={false}
+                  />
+                </>
+              )}
 
               <TouchableOpacity
                 onPress={() => switchSection("dashboard")}
@@ -977,6 +1294,74 @@ export default function HomeScreen() {
           {/* ABA 3: SIMULADOR FIPE, VIAGEM, GARAGEM SALVA E CALCULADORA DE CUSTOS (RECURSOS EXISTENTES PRESERVADOS) */}
           {activeSection === "simulator" && (
             <View>
+              {authStatus === "authenticated" && linkedDashboardVehicle && (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    flexWrap: "wrap",
+                    gap: 10,
+                    backgroundColor: "rgba(228, 59, 85, 0.12)",
+                    borderWidth: 1,
+                    borderColor: "rgba(228, 59, 85, 0.36)",
+                    borderRadius: 16,
+                    paddingHorizontal: 14,
+                    paddingVertical: 12,
+                    marginBottom: 16,
+                  }}
+                >
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 10,
+                      flex: 1,
+                      minWidth: 210,
+                    }}
+                  >
+                    <Ionicons name="car-sport" size={20} color="#ff8c9b" />
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={{
+                          color: "#ffffff",
+                          fontSize: 13,
+                          fontWeight: "800",
+                        }}
+                      >
+                        Veículo vinculado do Dashboard:{" "}
+                        {linkedDashboardVehicle.brand}{" "}
+                        {linkedDashboardVehicle.model}{" "}
+                        {linkedDashboardVehicle.year}
+                      </Text>
+                      <Text
+                        style={{
+                          color: "#cbbec3",
+                          fontSize: 12,
+                          marginTop: 2,
+                        }}
+                      >
+                        Preencha pneus, calibragem, peso e tipo de uso para
+                        atualizar a nota de saúde no seu painel.
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={{ flexDirection: "row", gap: 8 }}>
+                    <TouchableOpacity
+                      onPress={() => switchSection("dashboard")}
+                      style={pStyles.secondaryBtn}
+                      accessibilityRole="button"
+                    >
+                      <Ionicons name="arrow-back" size={14} color="#efe5e8" />
+                      <Text style={pStyles.secondaryBtnText}>
+                        Voltar ao Dashboard
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
               <Header
                 online={marcas.length > 0}
                 carregando={carregandoMarcas}
@@ -1094,6 +1479,131 @@ export default function HomeScreen() {
                       Resultado e simulador de viagem
                     </Text>
                   </View>
+
+                  {authStatus === "authenticated" && linkedDashboardVehicle && (
+                    <View
+                      style={{
+                        backgroundColor: "#14121b",
+                        borderWidth: 1,
+                        borderColor: "rgba(228, 59, 85, 0.42)",
+                        borderRadius: 18,
+                        padding: 16,
+                        marginBottom: 16,
+                        gap: 10,
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          flexWrap: "wrap",
+                          gap: 12,
+                        }}
+                      >
+                        <View style={{ flex: 1, minWidth: 210 }}>
+                          <Text style={pStyles.sectionEyebrow}>
+                            SINCRONIZAR COM A GARAGEM
+                          </Text>
+                          <Text
+                            style={{
+                              color: "#ffffff",
+                              fontSize: 15,
+                              fontWeight: "800",
+                            }}
+                          >
+                            Atualizar {linkedDashboardVehicle.brand}{" "}
+                            {linkedDashboardVehicle.model} no Dashboard
+                          </Text>
+                          <Text
+                            style={{
+                              color: "#b7aab0",
+                              fontSize: 12,
+                              marginTop: 3,
+                              lineHeight: 18,
+                            }}
+                          >
+                            Salva a nova nota de saúde ({resultado.nota}/100),
+                            consumo estimado (
+                            {resultado.consumo.toFixed(1).replace(".", ",")}{" "}
+                            km/L) e quilometragem ({formatKm(dadosAnalisados.km)}
+                            ).
+                          </Text>
+                        </View>
+
+                        <TouchableOpacity
+                          onPress={() => void handleSyncSimulatorToDashboard()}
+                          disabled={syncingToDashboard}
+                          activeOpacity={0.85}
+                          accessibilityRole="button"
+                          style={[
+                            pStyles.primaryCtaBtn,
+                            syncingToDashboard && { opacity: 0.7 },
+                          ]}
+                        >
+                          {syncingToDashboard ? (
+                            <ActivityIndicator color="#ffffff" size="small" />
+                          ) : (
+                            <Ionicons
+                              name="cloud-upload-outline"
+                              size={17}
+                              color="#ffffff"
+                            />
+                          )}
+                          <Text style={pStyles.primaryCtaText}>
+                            {syncingToDashboard
+                              ? "Atualizando..."
+                              : "Atualizar nota e consumo no Dashboard"}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {dashboardSyncMessage !== "" && (
+                        <View
+                          style={[
+                            pStyles.toastBanner,
+                            { marginBottom: 0, flexWrap: "wrap" },
+                          ]}
+                          accessibilityRole="alert"
+                        >
+                          <Ionicons
+                            name="checkmark-circle"
+                            size={18}
+                            color="#4ade80"
+                          />
+                          <Text style={pStyles.toastText}>
+                            {dashboardSyncMessage}
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() => switchSection("dashboard")}
+                            style={pStyles.secondaryBtn}
+                            accessibilityRole="button"
+                          >
+                            <Text style={pStyles.secondaryBtnText}>
+                              Ver no Dashboard
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
+                      {dashboardSyncError !== "" && (
+                        <View
+                          style={[pStyles.errorBox, { marginTop: 0 }]}
+                          accessibilityRole="alert"
+                        >
+                          <Ionicons
+                            name="alert-circle"
+                            size={17}
+                            color="#fca5a5"
+                          />
+                          <Text style={pStyles.errorText}>
+                            {dashboardSyncError}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+
                   <View
                     style={styles.desktopColumns}
                     {...webAttr({ "data-torque-columns": "1" })}

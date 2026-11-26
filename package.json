@@ -11,6 +11,7 @@
     "api": "node --env-file=.env server/index.mjs",
     "test:api": "node --test server/*.test.mjs",
     "test:auth": "node --test server/auth/*.test.mjs && npx tsc --target ES2022 --module CommonJS --moduleResolution node --esModuleInterop --strict --outDir /tmp/torquelab-auth-tests lib/auth/types.ts lib/auth/tokenStorageCore.ts lib/auth/authClient.ts lib/auth/authClient.test.ts && node --test /tmp/torquelab-auth-tests/authClient.test.js",
+    "test:dashboard": "node --test server/dashboard/*.test.mjs && npx tsc --target ES2022 --module CommonJS --moduleResolution node --esModuleInterop --strict --outDir /tmp/torquelab-dashboard-tests lib/auth/types.ts lib/auth/tokenStorageCore.ts lib/auth/authClient.ts lib/dashboard/types.ts lib/dashboard/dashboardClient.ts lib/dashboard/dashboardClient.test.ts && node --test /tmp/torquelab-dashboard-tests/dashboard/dashboardClient.test.js",
     "test:preventive": "npx tsc --target ES2022 --module CommonJS --moduleResolution node --esModuleInterop --strict --outDir /tmp/torquelab-preventive-tests lib/preventive/types.ts lib/preventive/catalog.ts lib/preventive/engine.ts lib/preventive/storageCore.ts lib/preventive/preventive.test.ts && node --test /tmp/torquelab-preventive-tests/preventive.test.js",
     "build": "npx expo export --platform web",
     "deploy": "gh-pages --nojekyll -d dist",

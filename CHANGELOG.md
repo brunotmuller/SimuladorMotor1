@@ -2,6 +2,21 @@
 
 Todas as mudanças relevantes do **TorqueLab** serão documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [2026-11-25] - user-dashboard
+
+### Adicionado
+- Dashboard principal do usuário autenticado (`UserDashboardView`) com seletor multi-veículo, KPIs consolidados (nota de saúde 0–100, consumo estimado `km/L` ou `km/kWh`, manutenções pendentes, próximo marco de KM e custo total dinâmico) e estado vazio orientado com opção de carro de demonstração (`RF-01`, `RF-02`, `RF-03`, `RF-05`).
+- **[RN-01]** Cadastro e edição completos de veículos (via Catálogo interno TorqueLab ou Tabela FIPE), validação de quilometragem (`0..2.000.000`), apelido (≤ 40 chars), meses desde última revisão (`0..120`), limite de 20 veículos ativos por conta (HTTP `422`) e confirmação explícita de regressão de hodômetro (HTTP `409` → `confirmKmRegression: true`).
+- **[RN-02]** Motor de cálculo de manutenções (`server/dashboard/maintenanceEngine.mjs`) com omissão automática de serviços `combustionOnly` para veículos elétricos, classificação por urgência (**Atrasada / Urgente**, **Recomendada agora** e **Próxima revisão**), preços arredondados ao múltiplo de 5 (`roundToNearest5`), registro de valor pago real no histórico sem alterar o catálogo global e preservação do histórico de serviços desativados.
+- **[RN-03]** Endpoints REST autenticados com isolamento estrito por proprietário (`ownerId`): `GET /api/dashboard`, `GET /api/catalog/vehicles`, `GET/POST /api/user/vehicles`, `PATCH/DELETE /api/user/vehicles/:id`, `POST /api/user/vehicles/:id/select` e `GET/POST /api/user/maintenance-logs`.
+- **[RN-04]** Degradação graciosa com cache local por usuário (`dashboardCache.ts`), banner de erro não destrutivo com recarregamento, selo `"FIPE em cache"`, fallback via catálogo interno e exclusão segura via soft delete promovendo automaticamente o próximo veículo ativo.
+- Integração bidirecional com o Simulador Completo (`RF-04`) pré-preenchendo o carro ativo e sincronizando nota e consumo de volta ao Dashboard.
+- Suíte de testes automatizados `npm run test:dashboard` (9 testes cobrindo todos os cenários BDD de `specs/user-dashboard.md`).
+
+### Corrigido / Alterado
+- Estendido o banco SQLite (`server/dashboard/db.mjs`) com tabelas `catalog_vehicles`, `catalog_services`, `user_vehicles` e `maintenance_logs` e seed idempotente de 9 veículos e 8 serviços iniciais.
+- Atualizado `app/(tabs)/index.tsx` para exibir o Dashboard autenticado na aba principal mantendo o Modo Visitante intacto.
+
 ## [2026-11-25] - auth-roles
 
 ### Adicionado

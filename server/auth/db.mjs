@@ -2,6 +2,10 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import {
+  ensureDashboardSchema,
+  seedDefaultCatalogs,
+} from "../dashboard/db.mjs";
 import { DEFAULT_DB_PATH } from "./config.mjs";
 
 const DEFAULT_ADMIN_NAME = "Administrador TorqueLab";
@@ -55,6 +59,8 @@ export function openAuthDatabase(dbPath = DEFAULT_DB_PATH) {
   }
 
   db.exec(SCHEMA_SQL);
+  ensureDashboardSchema(db);
+  seedDefaultCatalogs(db);
 
   return db;
 }
