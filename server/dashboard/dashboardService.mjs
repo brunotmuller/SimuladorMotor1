@@ -61,6 +61,7 @@ export function toUserVehicle(row) {
     fipeCached: Boolean(row.fipe_cached),
     currentKm: row.current_km,
     lastRevisionMonths: row.last_revision_months,
+    lastRevisionKm: row.last_revision_km ?? null,
     healthScore: row.health_score,
     estimatedConsumption: row.estimated_consumption,
     isActive: Boolean(row.is_active),
@@ -308,6 +309,7 @@ export function createDashboardService({ db, now = () => Date.now() }) {
           fipe_cached,
           current_km,
           last_revision_months,
+          last_revision_km,
           health_score,
           estimated_consumption,
           is_active,
@@ -315,7 +317,7 @@ export function createDashboardService({ db, now = () => Date.now() }) {
           deleted_at,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, NULL, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, NULL, ?, ?)`,
       ).run(
         id,
         ownerId,
@@ -334,6 +336,7 @@ export function createDashboardService({ db, now = () => Date.now() }) {
         data.fipeCached ? 1 : 0,
         data.currentKm,
         data.lastRevisionMonths,
+        data.lastRevisionKm,
         finalHealthScore,
         finalConsumption,
         data.isDemo ? 1 : 0,
@@ -423,6 +426,23 @@ export function createDashboardService({ db, now = () => Date.now() }) {
       data.lastRevisionMonths !== undefined
         ? data.lastRevisionMonths
         : existing.last_revision_months;
+    let nextLastRevisionKm =
+      data.lastRevisionKm !== undefined
+        ? data.lastRevisionKm
+        : (existing.last_revision_km ?? null);
+
+    if (nextLastRevisionKm !== null && nextLastRevisionKm > nextCurrentKm) {
+      if (data.lastRevisionKm !== undefined) {
+        throw new DashboardError(400, "Dados de atualização inválidos.", {
+          fields: {
+            lastRevisionKm:
+              "A KM da última revisão não pode ser maior que a quilometragem atual.",
+          },
+        });
+      }
+      nextLastRevisionKm = nextCurrentKm;
+    }
+
     const nextHealthScore =
       data.healthScore !== undefined ? data.healthScore : existing.health_score;
     const nextEstimatedConsumption =
@@ -449,6 +469,7 @@ export function createDashboardService({ db, now = () => Date.now() }) {
         fipe_cached = ?,
         current_km = ?,
         last_revision_months = ?,
+        last_revision_km = ?,
         health_score = ?,
         estimated_consumption = ?,
         updated_at = ?
@@ -468,6 +489,7 @@ export function createDashboardService({ db, now = () => Date.now() }) {
       nextFipeCached,
       nextCurrentKm,
       nextLastRevisionMonths,
+      nextLastRevisionKm,
       nextHealthScore,
       nextEstimatedConsumption,
       nowIso,

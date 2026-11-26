@@ -253,6 +253,14 @@ export function evaluateVehicleMaintenances(
     0,
     Number(vehicle?.lastRevisionMonths ?? vehicle?.last_revision_months ?? 0),
   );
+  const rawLastRevisionKm =
+    vehicle?.lastRevisionKm ?? vehicle?.last_revision_km ?? null;
+  const lastRevisionKm =
+    rawLastRevisionKm !== null &&
+    rawLastRevisionKm !== undefined &&
+    Number.isFinite(Number(rawLastRevisionKm))
+      ? Math.min(currentKm, Math.max(0, Number(rawLastRevisionKm)))
+      : null;
 
   const latestLogs = buildLatestLogsByService(logs);
   const items = [];
@@ -318,9 +326,20 @@ export function evaluateVehicleMaintenances(
         }
       }
     } else {
-      dueByKm = currentKm >= intervalKm;
-      overdueKm = dueByKm ? currentKm - intervalKm : 0;
-      nextDueKm = dueByKm ? currentKm : intervalKm;
+      if (lastRevisionKm !== null) {
+        const baselineKm =
+          intervalKm <= 10000
+            ? lastRevisionKm
+            : Math.floor(lastRevisionKm / intervalKm) * intervalKm;
+        const kmSinceBaseline = Math.max(0, currentKm - baselineKm);
+        nextDueKm = baselineKm + intervalKm;
+        dueByKm = kmSinceBaseline >= intervalKm;
+        overdueKm = dueByKm ? kmSinceBaseline - intervalKm : 0;
+      } else {
+        dueByKm = currentKm >= intervalKm;
+        overdueKm = dueByKm ? currentKm - intervalKm : 0;
+        nextDueKm = dueByKm ? currentKm : intervalKm;
+      }
 
       if (intervalMonths !== null) {
         dueByTime = lastRevisionMonths >= intervalMonths;

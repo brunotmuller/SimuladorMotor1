@@ -48,6 +48,7 @@ CREATE TABLE IF NOT EXISTS user_vehicles (
   fipe_cached INTEGER NOT NULL DEFAULT 0,
   current_km INTEGER NOT NULL,
   last_revision_months INTEGER NOT NULL DEFAULT 0,
+  last_revision_km INTEGER,
   health_score INTEGER NOT NULL DEFAULT 85,
   estimated_consumption REAL NOT NULL DEFAULT 11.5,
   is_active INTEGER NOT NULL DEFAULT 0,
@@ -299,6 +300,7 @@ export function ensureDashboardSchema(db) {
     "updated_by",
     "TEXT REFERENCES users(id)",
   );
+  ensureColumnExists(db, "user_vehicles", "last_revision_km", "INTEGER");
 }
 
 export function seedDefaultCatalogs(db) {

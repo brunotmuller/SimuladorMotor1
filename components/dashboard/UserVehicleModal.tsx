@@ -54,6 +54,7 @@ type FieldErrors = Partial<
     | "category"
     | "currentKm"
     | "lastRevisionMonths"
+    | "lastRevisionKm"
     | "plate"
     | "fipePrice",
     string
@@ -208,6 +209,11 @@ export default function UserVehicleModal({
   const [category, setCategory] = useState<VehicleCategory>("compact");
   const [currentKmText, setCurrentKmText] = useState("");
   const [lastRevisionMonthsText, setLastRevisionMonthsText] = useState("0");
+  const [revisionHistoryMode, setRevisionHistoryMode] = useState<
+    "known" | "unknown"
+  >("known");
+  const [lastRevisionKmText, setLastRevisionKmText] = useState("");
+  const [lastRevisionKmTouched, setLastRevisionKmTouched] = useState(false);
   const [plate, setPlate] = useState("");
   const [fipePrice, setFipePrice] = useState("");
   const [fipeCode, setFipeCode] = useState<string | null>(null);
@@ -270,6 +276,15 @@ export default function UserVehicleModal({
       setCategory(editingVehicle.category);
       setCurrentKmText(String(editingVehicle.currentKm));
       setLastRevisionMonthsText(String(editingVehicle.lastRevisionMonths));
+      setRevisionHistoryMode(
+        editingVehicle.lastRevisionKm !== null ? "known" : "unknown"
+      );
+      setLastRevisionKmText(
+        editingVehicle.lastRevisionKm !== null
+          ? String(editingVehicle.lastRevisionKm)
+          : ""
+      );
+      setLastRevisionKmTouched(true);
       setPlate(editingVehicle.plate ?? "");
       setFipePrice(editingVehicle.fipePrice ?? "");
       setFipeCode(editingVehicle.fipeCode);
@@ -286,6 +301,9 @@ export default function UserVehicleModal({
       setCategory("compact");
       setCurrentKmText("");
       setLastRevisionMonthsText("0");
+      setRevisionHistoryMode("known");
+      setLastRevisionKmText("");
+      setLastRevisionKmTouched(false);
       setPlate("");
       setFipePrice("");
       setFipeCode(null);
@@ -418,6 +436,14 @@ export default function UserVehicleModal({
   }
 
   const parsedCurrentKm = parseStrictInt(currentKmText);
+  const suggestedRevisionKm =
+    parsedCurrentKm !== null && parsedCurrentKm >= 10000
+      ? Math.floor(parsedCurrentKm / 10000) * 10000
+      : null;
+  const showRevisionHistoryCard =
+    (parsedCurrentKm !== null && parsedCurrentKm >= 10000) ||
+    Boolean(editingVehicle && editingVehicle.lastRevisionKm !== null);
+  const parsedLastRevisionKmPreview = parseStrictInt(lastRevisionKmText);
   const showEditKmRegression =
     Boolean(editingVehicle) &&
     ((parsedCurrentKm !== null &&
@@ -477,6 +503,27 @@ export default function UserVehicleModal({
       errors.lastRevisionMonths = `Informe um valor inteiro entre 0 e ${MAX_REVISION_MONTHS} meses.`;
     }
 
+    let resolvedLastRevisionKm: number | null = null;
+    if (showRevisionHistoryCard && revisionHistoryMode === "known") {
+      const parsedLastRevKm = parseStrictInt(lastRevisionKmText);
+      if (
+        parsedLastRevKm === null ||
+        parsedLastRevKm < 0 ||
+        parsedLastRevKm > MAX_KM
+      ) {
+        errors.lastRevisionKm =
+          "Informe a KM da última revisão como um inteiro válido (ex.: 70000).";
+      } else if (
+        parsedCurrentKm !== null &&
+        parsedLastRevKm > parsedCurrentKm
+      ) {
+        errors.lastRevisionKm =
+          "A KM da última revisão não pode ser maior que a quilometragem atual.";
+      } else {
+        resolvedLastRevisionKm = parsedLastRevKm;
+      }
+    }
+
     if (trimmedPlate.length > 10) {
       errors.plate = "A placa deve ter no máximo 10 caracteres.";
     }
@@ -513,6 +560,7 @@ export default function UserVehicleModal({
           category,
           currentKm: parsedCurrentKm!,
           lastRevisionMonths: parsedRevisionMonths!,
+          lastRevisionKm: resolvedLastRevisionKm,
           plate: trimmedPlate.length > 0 ? trimmedPlate : null,
           fipePrice: trimmedFipePrice.length > 0 ? trimmedFipePrice : null,
           fipeCode: fipeCode ?? editingVehicle.fipeCode,
@@ -531,6 +579,7 @@ export default function UserVehicleModal({
           category,
           currentKm: parsedCurrentKm!,
           lastRevisionMonths: parsedRevisionMonths!,
+          lastRevisionKm: resolvedLastRevisionKm,
           plate: trimmedPlate.length > 0 ? trimmedPlate : null,
           fipePrice: trimmedFipePrice.length > 0 ? trimmedFipePrice : null,
           fipeCode,
@@ -955,10 +1004,22 @@ export default function UserVehicleModal({
                     ]}
                     value={currentKmText}
                     onChangeText={(t) => {
-                      setCurrentKmText(t.replace(/[^\d-]/g, ""));
+                      const cleaned = t.replace(/[^\d-]/g, "");
+                      setCurrentKmText(cleaned);
                       setConfirmKmRegression(false);
                       setNeedsServerKmConfirm(false);
                       clearField("currentKm");
+                      clearField("lastRevisionKm");
+                      if (!isEditing && !lastRevisionKmTouched) {
+                        const nextKm = parseStrictInt(cleaned);
+                        if (nextKm !== null && nextKm >= 10000) {
+                          setLastRevisionKmText(
+                            String(Math.floor(nextKm / 10000) * 10000)
+                          );
+                        } else {
+                          setLastRevisionKmText("");
+                        }
+                      }
                     }}
                     keyboardType="numeric"
                     placeholder="Ex.: 60000"
@@ -997,6 +1058,189 @@ export default function UserVehicleModal({
                   )}
                 </View>
               </View>
+
+              {showRevisionHistoryCard && (
+                <View style={vStyles.revisionHistoryBox}>
+                  <View style={vStyles.revisionHistoryHead}>
+                    <Ionicons
+                      name="shield-checkmark-outline"
+                      size={16}
+                      color="#ff8c9b"
+                    />
+                    <Text style={vStyles.revisionHistoryTitle}>
+                      As revisões anteriores estão em dia?
+                    </Text>
+                  </View>
+                  <Text style={vStyles.revisionHistoryDesc}>
+                    Informe a quilometragem da última revisão feita para não
+                    contabilizar revisões antigas como atrasadas.
+                  </Text>
+
+                  <View style={vStyles.chipsRow}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        setRevisionHistoryMode("known");
+                        clearField("lastRevisionKm");
+                        if (
+                          lastRevisionKmText.trim() === "" &&
+                          suggestedRevisionKm !== null
+                        ) {
+                          setLastRevisionKmText(String(suggestedRevisionKm));
+                        }
+                      }}
+                      disabled={submitting}
+                      activeOpacity={0.85}
+                      accessibilityRole="button"
+                      style={[
+                        vStyles.chip,
+                        revisionHistoryMode === "known" && vStyles.chipActive,
+                      ]}
+                    >
+                      <Ionicons
+                        name="checkmark-circle-outline"
+                        size={13}
+                        color={
+                          revisionHistoryMode === "known"
+                            ? "#ffffff"
+                            : "#b9adb2"
+                        }
+                      />
+                      <Text
+                        style={[
+                          vStyles.chipText,
+                          revisionHistoryMode === "known" &&
+                            vStyles.chipTextActive,
+                        ]}
+                      >
+                        Sim, sei a KM da última
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={() => {
+                        setRevisionHistoryMode("unknown");
+                        clearField("lastRevisionKm");
+                      }}
+                      disabled={submitting}
+                      activeOpacity={0.85}
+                      accessibilityRole="button"
+                      style={[
+                        vStyles.chip,
+                        revisionHistoryMode === "unknown" && vStyles.chipActive,
+                      ]}
+                    >
+                      <Ionicons
+                        name="help-circle-outline"
+                        size={13}
+                        color={
+                          revisionHistoryMode === "unknown"
+                            ? "#ffffff"
+                            : "#b9adb2"
+                        }
+                      />
+                      <Text
+                        style={[
+                          vStyles.chipText,
+                          revisionHistoryMode === "unknown" &&
+                            vStyles.chipTextActive,
+                        ]}
+                      >
+                        Não sei o histórico (usado)
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {revisionHistoryMode === "known" ? (
+                    <View style={{ marginTop: 10 }}>
+                      <View style={vStyles.revisionKmHeaderRow}>
+                        <Text style={[pStyles.fieldLabel, { marginTop: 0 }]}>
+                          KM da última revisão *
+                        </Text>
+                        {suggestedRevisionKm !== null &&
+                          lastRevisionKmText !==
+                            String(suggestedRevisionKm) && (
+                            <TouchableOpacity
+                              onPress={() => {
+                                setLastRevisionKmText(
+                                  String(suggestedRevisionKm)
+                                );
+                                setLastRevisionKmTouched(true);
+                                clearField("lastRevisionKm");
+                              }}
+                              disabled={submitting}
+                              activeOpacity={0.85}
+                              accessibilityRole="button"
+                              style={vStyles.suggestKmBtn}
+                            >
+                              <Text style={vStyles.suggestKmBtnText}>
+                                Usar {formatKm(suggestedRevisionKm)}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                      </View>
+                      <TextInput
+                        style={[
+                          pStyles.input,
+                          fieldErrors.lastRevisionKm && vStyles.inputError,
+                        ]}
+                        value={lastRevisionKmText}
+                        onChangeText={(t) => {
+                          setLastRevisionKmText(t.replace(/[^\d]/g, ""));
+                          setLastRevisionKmTouched(true);
+                          clearField("lastRevisionKm");
+                        }}
+                        keyboardType="numeric"
+                        placeholder={
+                          suggestedRevisionKm !== null
+                            ? `Ex.: ${suggestedRevisionKm}`
+                            : "Ex.: 70000"
+                        }
+                        placeholderTextColor="#665d62"
+                        editable={!submitting}
+                        accessibilityLabel="Quilometragem da última revisão"
+                      />
+                      {fieldErrors.lastRevisionKm ? (
+                        <Text style={vStyles.fieldError}>
+                          {fieldErrors.lastRevisionKm}
+                        </Text>
+                      ) : parsedCurrentKm !== null &&
+                        parsedLastRevisionKmPreview !== null &&
+                        parsedLastRevisionKmPreview >= 0 &&
+                        parsedLastRevisionKmPreview <= parsedCurrentKm ? (
+                        <Text style={vStyles.revisionPreviewHint}>
+                          {parsedCurrentKm - parsedLastRevisionKmPreview >=
+                          10000
+                            ? `Ex.: troca de óleo (10.000 km) mostrará atraso de ${formatKm(
+                                parsedCurrentKm -
+                                  parsedLastRevisionKmPreview -
+                                  10000
+                              )} desde ${formatKm(
+                                parsedLastRevisionKmPreview + 10000
+                              )}.`
+                            : `Ex.: próxima troca de óleo prevista em ${formatKm(
+                                parsedLastRevisionKmPreview + 10000
+                              )} (faltam ${formatKm(
+                                parsedLastRevisionKmPreview +
+                                  10000 -
+                                  parsedCurrentKm
+                              )}).`}
+                        </Text>
+                      ) : (
+                        <Text style={vStyles.revisionPreviewHint}>
+                          Os serviços preventivos serão calculados a partir
+                          dessa quilometragem.
+                        </Text>
+                      )}
+                    </View>
+                  ) : (
+                    <Text style={vStyles.revisionUnknownHint}>
+                      Sem histórico informado: o painel destacará as revisões
+                      dos marcos anteriores para conferência preventiva até você
+                      marcá-las como concluídas.
+                    </Text>
+                  )}
+                </View>
+              )}
 
               {showEditKmRegression && editingVehicle && (
                 <View style={vStyles.regressionBox} accessibilityRole="alert">
@@ -1547,6 +1791,64 @@ const vStyles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
     marginTop: 6,
+    fontWeight: "600",
+  },
+  revisionHistoryBox: {
+    marginTop: 12,
+    backgroundColor: "rgba(228, 59, 85, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(228, 59, 85, 0.28)",
+    borderRadius: 14,
+    padding: 13,
+  },
+  revisionHistoryHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+  },
+  revisionHistoryTitle: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  revisionHistoryDesc: {
+    color: "#cbbec3",
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 4,
+  },
+  revisionKmHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginBottom: 4,
+  },
+  suggestKmBtn: {
+    backgroundColor: "rgba(228, 59, 85, 0.16)",
+    borderWidth: 1,
+    borderColor: "rgba(228, 59, 85, 0.42)",
+    borderRadius: 99,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  suggestKmBtnText: {
+    color: "#ff9aa8",
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  revisionPreviewHint: {
+    color: "#86efac",
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 5,
+    fontWeight: "600",
+  },
+  revisionUnknownHint: {
+    color: "#fde68a",
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 9,
     fontWeight: "600",
   },
   regressionBox: {

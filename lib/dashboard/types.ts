@@ -50,6 +50,7 @@ export type UserVehicle = {
   fipeCached: boolean;
   currentKm: number;
   lastRevisionMonths: number;
+  lastRevisionKm: number | null;
   healthScore: number;
   estimatedConsumption: number;
   isActive: boolean;
@@ -131,6 +132,7 @@ export type CreateVehiclePayload = {
   fipeCached?: boolean;
   currentKm: number;
   lastRevisionMonths?: number;
+  lastRevisionKm?: number | null;
   healthScore?: number;
   estimatedConsumption?: number;
   isDemo?: boolean;
@@ -150,6 +152,7 @@ export type UpdateVehiclePayload = {
   fipeCached?: boolean;
   currentKm?: number;
   lastRevisionMonths?: number;
+  lastRevisionKm?: number | null;
   healthScore?: number;
   estimatedConsumption?: number;
   confirmKmRegression?: boolean;
