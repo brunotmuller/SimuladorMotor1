@@ -10,7 +10,7 @@ import { createDashboardRouter } from "./dashboard/routes.mjs";
 import { fetchFalconImage, fetchFalconPlate } from "./falcon.mjs";
 import { createStaticWebHandler } from "./static.mjs";
 
-const port = Number(process.env.API_PORT || 3001);
+const port = Number(process.env.PORT || process.env.API_PORT || 3001);
 const host = process.env.API_HOST?.trim() || "0.0.0.0";
 
 function json(response, status, body) {
