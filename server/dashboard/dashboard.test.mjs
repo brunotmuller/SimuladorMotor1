@@ -439,3 +439,97 @@ test("RN-01 e RN-04: regressão de KM exige confirmação (409 -> 200), limite d
     await app.close();
   }
 });
+
+test("Histórico de revisão inicial (lastRevisionKm): carro com 73.000 km e última revisão aos 70.000 km não marca atraso falso de 63.000 km", async () => {
+  const harness = createTestHarness();
+  const app = await harness.start();
+  try {
+    const { token } = await app.registerUser("revisao70k@exemplo.com");
+
+    // 1) Carro 73.000 km com revisões em dia até 70.000 km -> 0 atrasadas, próximo óleo aos 80.000 km
+    const createOk = await app.send("POST", "/api/user/vehicles", {
+      token,
+      body: {
+        brand: "Toyota",
+        model: "Corolla",
+        year: 2020,
+        fuel: "Flex",
+        category: "medium_suv",
+        currentKm: 73000,
+        lastRevisionKm: 70000,
+        lastRevisionMonths: 3,
+      },
+    });
+    assert.equal(createOk.status, 201);
+    assert.equal(createOk.json.vehicle.lastRevisionKm, 70000);
+    assert.equal(createOk.json.dashboard.summary.dueCount, 0);
+
+    const oilOk = createOk.json.dashboard.maintenances.find(
+      (m) => m.serviceId === "svc-oil",
+    );
+    assert.ok(oilOk);
+    assert.equal(oilOk.dueNow, false);
+    assert.equal(oilOk.overdueKm, 0);
+    assert.equal(oilOk.nextDueKm, 80000);
+
+    const beltOk = createOk.json.dashboard.maintenances.find(
+      (m) => m.serviceId === "svc-timing-belt",
+    );
+    assert.ok(beltOk);
+    assert.equal(beltOk.dueNow, false);
+    assert.equal(beltOk.nextDueKm, 120000);
+
+    // 2) Atualizar última revisão para 60.000 km -> óleo atrasado em apenas 3.000 km (não 63.000 km)
+    const patch60k = await app.send(
+      "PATCH",
+      `/api/user/vehicles/${createOk.json.vehicle.id}`,
+      {
+        token,
+        body: { lastRevisionKm: 60000 },
+      },
+    );
+    assert.equal(patch60k.status, 200);
+    const oil60k = patch60k.json.dashboard.maintenances.find(
+      (m) => m.serviceId === "svc-oil",
+    );
+    assert.equal(oil60k.dueNow, true);
+    assert.equal(oil60k.overdueKm, 3000);
+    assert.equal(oil60k.nextDueKm, 70000);
+
+    // 3) Carro com 55.000 km e última revisão aos 50.000 km -> correia de 60.000 km ainda vence aos 60.000 km
+    const create55k = await app.send("POST", "/api/user/vehicles", {
+      token,
+      body: {
+        brand: "Honda",
+        model: "Civic",
+        year: 2021,
+        fuel: "Flex",
+        currentKm: 55000,
+        lastRevisionKm: 50000,
+        lastRevisionMonths: 2,
+      },
+    });
+    assert.equal(create55k.status, 201);
+    const belt55k = create55k.json.dashboard.maintenances.find(
+      (m) => m.serviceId === "svc-timing-belt",
+    );
+    assert.equal(belt55k.dueNow, false);
+    assert.equal(belt55k.nextDueKm, 60000);
+
+    // 4) Validação: lastRevisionKm > currentKm retorna 400
+    const badRev = await app.send("POST", "/api/user/vehicles", {
+      token,
+      body: {
+        brand: "Fiat",
+        model: "Argo",
+        year: 2022,
+        currentKm: 40000,
+        lastRevisionKm: 50000,
+      },
+    });
+    assert.equal(badRev.status, 400);
+    assert.ok(badRev.json.fields?.lastRevisionKm);
+  } finally {
+    await app.close();
+  }
+});

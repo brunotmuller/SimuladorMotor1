@@ -135,6 +135,26 @@ export function validateCreateVehiclePayload(body) {
     }
   }
 
+  let lastRevisionKm = null;
+  if (input.lastRevisionKm !== undefined && input.lastRevisionKm !== null) {
+    if (
+      !isSafeInt(input.lastRevisionKm) ||
+      input.lastRevisionKm < 0 ||
+      input.lastRevisionKm > MAX_KM
+    ) {
+      fields.lastRevisionKm =
+        "A quilometragem da última revisão deve ser um inteiro entre 0 e 2.000.000.";
+    } else if (
+      isSafeInt(input.currentKm) &&
+      input.lastRevisionKm > input.currentKm
+    ) {
+      fields.lastRevisionKm =
+        "A KM da última revisão não pode ser maior que a quilometragem atual.";
+    } else {
+      lastRevisionKm = input.lastRevisionKm;
+    }
+  }
+
   let fuel = "Flex";
   if (input.fuel !== undefined && input.fuel !== null) {
     if (typeof input.fuel !== "string") {
@@ -258,6 +278,7 @@ export function validateCreateVehiclePayload(body) {
     currentKm: input.currentKm,
     nickname: nicknameResult.value,
     lastRevisionMonths,
+    lastRevisionKm,
     fuel,
     plate: plateResult.value,
     version: versionResult.value,
@@ -355,6 +376,28 @@ export function validateUpdateVehiclePayload(body) {
         "Os meses desde a última revisão devem ser um inteiro entre 0 e 120.";
     } else {
       data.lastRevisionMonths = input.lastRevisionMonths;
+    }
+  }
+
+  if (hasOwn(input, "lastRevisionKm") && input.lastRevisionKm !== undefined) {
+    updatableFieldCount += 1;
+    if (input.lastRevisionKm === null) {
+      data.lastRevisionKm = null;
+    } else if (
+      !isSafeInt(input.lastRevisionKm) ||
+      input.lastRevisionKm < 0 ||
+      input.lastRevisionKm > MAX_KM
+    ) {
+      fields.lastRevisionKm =
+        "A quilometragem da última revisão deve ser um inteiro entre 0 e 2.000.000.";
+    } else if (
+      data.currentKm !== undefined &&
+      input.lastRevisionKm > data.currentKm
+    ) {
+      fields.lastRevisionKm =
+        "A KM da última revisão não pode ser maior que a quilometragem atual.";
+    } else {
+      data.lastRevisionKm = input.lastRevisionKm;
     }
   }
 
