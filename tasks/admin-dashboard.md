@@ -140,7 +140,7 @@ graph TD
 
 ### [TASK-06] Modais de CRUD para Catálogo de Carros e Catálogo de Manutenções
 - **Camada:** `ui`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-05`
 - **Definição de Conclusão (DoD):**
   - Criar `components/admin/CatalogVehicleModal.tsx` (criar/editar veículo do catálogo):
@@ -153,7 +153,7 @@ graph TD
 
 ### [TASK-07] Dashboard Administrativo completo com 4 abas, KPIs, filtros e fallback por bloco
 - **Camada:** `ui`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-05`, `TASK-06`
 - **Definição de Conclusão (DoD):**
   - Criar `components/admin/AdminDashboardView.tsx` no tema visual TorqueLab (dark + crimson, mobile-first e responsivo) cobrindo `RF-01`..`RF-05` e `RN-04`:
