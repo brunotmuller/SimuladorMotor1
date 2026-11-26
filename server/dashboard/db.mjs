@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS catalog_vehicles (
   reference_consumption REAL NOT NULL DEFAULT 11.5,
   fipe_price TEXT,
   active INTEGER NOT NULL DEFAULT 1,
+  updated_by TEXT REFERENCES users(id),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -24,6 +25,7 @@ CREATE TABLE IF NOT EXISTS catalog_services (
   combustion_only INTEGER NOT NULL DEFAULT 0,
   notes TEXT,
   active INTEGER NOT NULL DEFAULT 1,
+  updated_by TEXT REFERENCES users(id),
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -83,6 +85,9 @@ CREATE INDEX IF NOT EXISTS idx_catalog_services_active
 
 CREATE INDEX IF NOT EXISTS idx_catalog_vehicles_active
   ON catalog_vehicles (active);
+
+CREATE INDEX IF NOT EXISTS idx_user_vehicles_brand_category_deleted
+  ON user_vehicles (brand, category, deleted_at);
 `;
 
 export const DEFAULT_CATALOG_VEHICLES = Object.freeze([
@@ -270,8 +275,30 @@ export const DEFAULT_CATALOG_SERVICES = Object.freeze([
   },
 ]);
 
+function ensureColumnExists(db, tableName, columnName, columnDefinition) {
+  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all();
+  const hasColumn = columns.some((column) => column.name === columnName);
+  if (!hasColumn) {
+    db.exec(
+      `ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`,
+    );
+  }
+}
+
 export function ensureDashboardSchema(db) {
   db.exec(DASHBOARD_SCHEMA_SQL);
+  ensureColumnExists(
+    db,
+    "catalog_vehicles",
+    "updated_by",
+    "TEXT REFERENCES users(id)",
+  );
+  ensureColumnExists(
+    db,
+    "catalog_services",
+    "updated_by",
+    "TEXT REFERENCES users(id)",
+  );
 }
 
 export function seedDefaultCatalogs(db) {
