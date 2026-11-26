@@ -109,7 +109,7 @@ graph TD
 
 ### [TASK-04] Endpoints REST `/api/admin/*` protegidos por RBAC e integração em `server/index.mjs`
 - **Camada:** `api_contract`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-03`
 - **Definição de Conclusão (DoD):**
   - Criar `server/admin/routes.mjs` exportando `createAdminRouter({ db, getDb, config, now })` exigindo `authenticateRequest` (`401`) + `requireRole(authUser, "admin")` (`403` para `user`, `RN-03`, `Cenário 6`) em todas as rotas `/api/admin/*`:
@@ -128,7 +128,7 @@ graph TD
 
 ### [TASK-05] Cliente HTTP administrativo com timeout de 15 segundos
 - **Camada:** `service`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-01`, `TASK-04`
 - **Definição de Conclusão (DoD):**
   - Criar `lib/admin/adminClient.ts` (puro TypeScript sem imports de React Native, injetável para testes):

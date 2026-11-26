@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { createAdminRouter } from "./admin/routes.mjs";
 import { loadAuthConfig } from "./auth/config.mjs";
 import { hashPassword } from "./auth/crypto.mjs";
 import { openAuthDatabase, seedInitialAdmin } from "./auth/db.mjs";
@@ -106,6 +107,13 @@ export function createAppServer({
     return activeDb;
   }
 
+  const handleAdminRoute = createAdminRouter({
+    db: authDb,
+    getDb: ensureAuthDb,
+    config,
+    now,
+  });
+
   const handleAuthRoute = createAuthRouter({
     db: authDb,
     getDb: ensureAuthDb,
@@ -167,6 +175,16 @@ export function createAppServer({
           return json(response, 405, { error: "Método não permitido." });
         }
         return json(response, 200, { status: "ok" });
+      }
+
+      const handledByAdmin = await handleAdminRoute(
+        request,
+        response,
+        urlObj,
+        json,
+      );
+      if (handledByAdmin) {
+        return;
       }
 
       const handledByAuth = await handleAuthRoute(request, response, path, json);
