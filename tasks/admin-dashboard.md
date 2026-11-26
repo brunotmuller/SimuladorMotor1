@@ -52,7 +52,7 @@ graph TD
 
 ### [TASK-02] Validadores estritos dos catálogos e paginação administrativa
 - **Camada:** `service`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-01`
 - **Definição de Conclusão (DoD):**
   - Criar `server/admin/validators.mjs` cobrindo `RN-01` e `RN-03`:
@@ -80,7 +80,7 @@ graph TD
 
 ### [TASK-03] Serviço administrativo de métricas (KPIs), veículos de usuários e CRUD dos catálogos
 - **Camada:** `service`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-01`, `TASK-02`
 - **Definição de Conclusão (DoD):**
   - Criar `server/admin/adminService.mjs` com `AdminError(status, message, options)` e `createAdminService({ db, now = () => Date.now() })`:
