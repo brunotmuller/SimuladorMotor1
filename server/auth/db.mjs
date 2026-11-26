@@ -139,3 +139,17 @@ export function seedInitialAdmin(db, config, hashPasswordFn) {
     email: normalizedEmail,
   };
 }
+
+export function promoteConfiguredAdmin(db, email = process.env.ADMIN_PROMOTE_EMAIL) {
+  const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+  if (!normalizedEmail) return { promoted: false, reason: "not_configured" };
+
+  const now = new Date().toISOString();
+  const result = db
+    .prepare("UPDATE users SET role = 'admin', updated_at = ? WHERE email = ? COLLATE NOCASE")
+    .run(now, normalizedEmail);
+
+  return result.changes > 0
+    ? { promoted: true, email: normalizedEmail }
+    : { promoted: false, reason: "user_not_found", email: normalizedEmail };
+}
