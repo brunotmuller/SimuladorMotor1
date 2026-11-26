@@ -93,6 +93,22 @@ export function AuthProvider({
     setBootError(null);
     setActionError(null);
 
+    // Evita manter a tela de inicialização presa caso o armazenamento local
+    // ou a restauração da sessão não conclua no navegador publicado.
+    const restoreWatchdog = setTimeout(() => {
+      if (!isMountedRef.current || seq !== requestSeqRef.current) {
+        return;
+      }
+
+      requestSeqRef.current += 1;
+      setUser(null);
+      setActivePortal("user");
+      setBootError(
+        "A verificação da sessão demorou mais que o esperado. Entre novamente ou continue como visitante."
+      );
+      setStatus("unauthenticated");
+    }, 12_000);
+
     try {
       const storedTokens = await client.getStoredTokens();
       if (!isMountedRef.current || seq !== requestSeqRef.current) {
@@ -157,6 +173,8 @@ export function AuthProvider({
       setActivePortal("user");
       setBootError(fallbackMessage);
       setStatus("unauthenticated");
+    } finally {
+      clearTimeout(restoreWatchdog);
     }
   }, [applyAuthenticatedUser, client]);
 
