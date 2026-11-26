@@ -7,7 +7,7 @@ WORKDIR /app
 
 # Instala dependências aproveitando o cache de camadas do Docker
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install --no-audit --no-fund
 
 # Copia o código-fonte do projeto
 COPY . .
