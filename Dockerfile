@@ -13,9 +13,9 @@ RUN npm install --no-audit --no-fund
 COPY . .
 
 # URLs públicas injetadas no bundle Web em tempo de build
-# (por padrão apontam para a mesma porta 3001 onde API + Frontend rodam juntos)
+# (por padrão usam same-origin para servir API + Frontend no mesmo host)
 ARG EXPO_PUBLIC_API_BASE_URL=same-origin
-ARG EXPO_PUBLIC_PLATE_API_URL=http://localhost:3001/api/vehicles
+ARG EXPO_PUBLIC_PLATE_API_URL=/api/vehicles
 ENV EXPO_PUBLIC_API_BASE_URL=${EXPO_PUBLIC_API_BASE_URL}
 ENV EXPO_PUBLIC_PLATE_API_URL=${EXPO_PUBLIC_PLATE_API_URL}
 ENV HOME=/tmp

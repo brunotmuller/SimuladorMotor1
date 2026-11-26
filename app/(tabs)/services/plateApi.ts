@@ -17,8 +17,44 @@ export type VeiculoPorPlaca = {
   ipvaByState?: { state?: string; taxableValue?: string; rate?: string; tax?: string }[];
 };
 
-const endpoint = process.env.EXPO_PUBLIC_PLATE_API_URL?.trim().replace(/\/$/, "");
-export const consultaPlacaConfigurada = !!endpoint;
+const DEV_WEB_PORTS = new Set(["8081", "8082", "19006"]);
+
+/** Resolve o endpoint de consulta de placas com suporte a same-origin e caminho relativo. */
+export function resolvePlateApiEndpoint(envUrl?: string): string {
+  const raw =
+    envUrl !== undefined
+      ? envUrl
+      : typeof process !== "undefined" && process.env
+        ? process.env.EXPO_PUBLIC_PLATE_API_URL
+        : undefined;
+  const trimmed = typeof raw === "string" ? raw.trim() : "";
+
+  const hasBrowserOrigin = typeof window !== "undefined" && Boolean(window.location?.origin);
+  const browserOrigin = hasBrowserOrigin ? window.location.origin.replace(/\/+$/, "") : "";
+  const browserPort = typeof window !== "undefined" ? (window.location?.port ?? "") : "";
+
+  if (trimmed.toLowerCase() === "same-origin") {
+    return browserOrigin ? `${browserOrigin}/api/vehicles` : "/api/vehicles";
+  }
+
+  if (trimmed.startsWith("/")) {
+    const normalizedPath = trimmed.replace(/\/+$/, "");
+    return browserOrigin ? `${browserOrigin}${normalizedPath}` : normalizedPath;
+  }
+
+  if (trimmed.length > 0) {
+    return trimmed.replace(/\/+$/, "");
+  }
+
+  if (browserOrigin && !DEV_WEB_PORTS.has(browserPort)) {
+    return `${browserOrigin}/api/vehicles`;
+  }
+
+  return "";
+}
+
+const endpoint = resolvePlateApiEndpoint();
+export const consultaPlacaConfigurada = Boolean(endpoint);
 
 export class PlacaNaoEncontradaError extends Error {}
 
@@ -38,14 +74,15 @@ export function placaValida(placa: string) {
 }
 
 export async function consultarPlaca(placa: string): Promise<VeiculoPorPlaca> {
-  if (!endpoint) throw new Error("A consulta por placa ainda não foi configurada.");
+  const resolvedEndpoint = resolvePlateApiEndpoint();
+  if (!resolvedEndpoint) throw new Error("A consulta por placa ainda não foi configurada.");
   if (!placaValida(placa)) throw new Error("Informe uma placa válida, como ABC1D23 ou ABC1234.");
   const normalizada = normalizarPlaca(placa);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
   try {
-    const resposta = await fetch(`${endpoint}/${encodeURIComponent(normalizada)}`, {
+    const resposta = await fetch(`${resolvedEndpoint}/${encodeURIComponent(normalizada)}`, {
       headers: { Accept: "application/json" },
       signal: controller.signal,
     });
@@ -55,7 +92,7 @@ export async function consultarPlaca(placa: string): Promise<VeiculoPorPlaca> {
     if (!retorno.data) throw new Error("A resposta da consulta está vazia.");
     return {
       ...retorno.data,
-      ...(retorno.data.imageAvailable && { imageUrl: `${endpoint}/${encodeURIComponent(normalizada)}/image` }),
+      ...(retorno.data.imageAvailable && { imageUrl: `${resolvedEndpoint}/${encodeURIComponent(normalizada)}/image` }),
     };
   } catch (erro) {
     if (erro instanceof PlacaNaoEncontradaError) throw erro;
