@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 import { createAdminRouter } from "./admin/routes.mjs";
 import { loadAuthConfig } from "./auth/config.mjs";
 import { hashPassword } from "./auth/crypto.mjs";
-import { openAuthDatabase, seedInitialAdmin } from "./auth/db.mjs";
+import { openAuthDatabase, promoteConfiguredAdmin, seedInitialAdmin } from "./auth/db.mjs";
 import { createAuthRouter, isDatabaseError } from "./auth/routes.mjs";
 import { createDashboardRouter } from "./dashboard/routes.mjs";
 import { fetchFalconImage, fetchFalconPlate } from "./falcon.mjs";
@@ -88,6 +88,9 @@ export function createAppServer({
 
   if (activeDb) {
     seedInitialAdmin(activeDb, config, hashPassword);
+    const promotion = promoteConfiguredAdmin(activeDb);
+    if (promotion.promoted) console.log(`Conta administrativa habilitada: ${promotion.email}`);
+    else if (promotion.reason === "user_not_found") console.warn(`Conta para promoção administrativa não encontrada: ${promotion.email}`);
     seeded = true;
   }
 
