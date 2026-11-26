@@ -80,7 +80,7 @@ graph TD
 
 ### [TASK-03] Serviço administrativo de métricas (KPIs), veículos de usuários e CRUD dos catálogos
 - **Camada:** `service`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-01`, `TASK-02`
 - **Definição de Conclusão (DoD):**
   - Criar `server/admin/adminService.mjs` com `AdminError(status, message, options)` e `createAdminService({ db, now = () => Date.now() })`:
@@ -109,7 +109,7 @@ graph TD
 
 ### [TASK-04] Endpoints REST `/api/admin/*` protegidos por RBAC e integração em `server/index.mjs`
 - **Camada:** `api_contract`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-03`
 - **Definição de Conclusão (DoD):**
   - Criar `server/admin/routes.mjs` exportando `createAdminRouter({ db, getDb, config, now })` exigindo `authenticateRequest` (`401`) + `requireRole(authUser, "admin")` (`403` para `user`, `RN-03`, `Cenário 6`) em todas as rotas `/api/admin/*`:
