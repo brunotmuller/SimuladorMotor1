@@ -2,6 +2,21 @@
 
 Todas as mudanças relevantes do **TorqueLab** serão documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [2026-11-26] - admin-dashboard
+
+### Adicionado
+- Painel Administrativo completo (`AdminDashboardView`) integrado ao `AdminPortalShell` dentro de `RoleGuard`, com 4 KPIs em tempo real (**Usuários cadastrados**, **Carros no catálogo**, **Carros de usuários** e **Catálogo de manutenções e serviços**), botão **"Atualizar dados"** com timestamp da última sincronização e 4 abas de navegação (**Visão Geral**, **Catálogo de Carros**, **Carros de Usuários** e **Catálogo de Manutenções**) (`RF-01`, `RF-02`, `RF-03`, `RF-04`, `RF-05`).
+- **[RN-01]** Validação estrita no servidor (`server/admin/validators.mjs`) e inline nos modais `CatalogVehicleModal` e `CatalogServiceModal`, impedindo valores inválidos (como `baseCost` negativo com HTTP `400`) e duplicidades de veículos/serviços (HTTP `409 Conflict`).
+- **[RN-02]** Desativação lógica segura (`PATCH` com `active: false`) nos catálogos de carros e serviços, bloqueio explícito de exclusão física `DELETE /api/admin/catalog/*` com HTTP `405 Method Not Allowed` e preservação integral de veículos de usuários e registros históricos em `maintenance_logs`.
+- **[RN-03]** Endpoints REST administrativos protegidos por JWT + RBAC (`role === "admin"`, `401`/`403`), paginação obrigatória (`limit <= 100`), mascaramento de e-mail dos proprietários (`b***@exemplo.com`), ranking `topModels` e auditoria `updated_by` no SQLite: `GET /api/admin/overview`, `GET /api/admin/user-vehicles`, `GET/POST /api/admin/catalog/vehicles`, `PATCH /api/admin/catalog/vehicles/:id`, `GET/POST /api/admin/catalog/services` e `PATCH /api/admin/catalog/services/:id`.
+- **[RN-04]** Cliente HTTP administrativo (`lib/admin/adminClient.ts`) com timeout dedicado de 15 segundos via `AbortController`, isolamento de falhas por bloco com botão **"Tentar novamente"** e preservação dos campos preenchidos nos modais em caso de erro `400`/`409`.
+- Suíte de testes automatizados `npm run test:admin` (11 testes cobrindo os 6 cenários BDD de `specs/admin-dashboard.md`, `DELETE 405`, imutabilidade histórica e timeout de 15s).
+
+### Corrigido / Alterado
+- Adicionada opção de **KM da última revisão (`lastRevisionKm`)** no cadastro e edição de veículos (`UserVehicleModal`, `db.mjs`, `validators.mjs`, `dashboardService.mjs` e `maintenanceEngine.mjs`) com opção **"Sim, sei a KM da última"** (sugestão automática de marco) ou **"Não sei o histórico (usado)"**, evitando alertas falsos de atraso acumulado para carros cadastrados com quilometragem rodada.
+- Estendido o banco SQLite (`server/dashboard/db.mjs`) com migrações idempotentes para `updated_by` em `catalog_vehicles` e `catalog_services`, `last_revision_km` em `user_vehicles` e índice composto `idx_user_vehicles_brand_category_deleted`.
+- Adicionado `createDefaultAuthClient` em `lib/auth/defaultAuthClient.ts` para suportar timeout customizado de 15s em `lib/admin/defaultAdminClient.ts`.
+
 ## [2026-11-25] - user-dashboard
 
 ### Adicionado
