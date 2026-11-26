@@ -128,7 +128,7 @@ graph TD
 
 ### [TASK-05] Cliente HTTP administrativo com timeout de 15 segundos
 - **Camada:** `service`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-01`, `TASK-04`
 - **Definição de Conclusão (DoD):**
   - Criar `lib/admin/adminClient.ts` (puro TypeScript sem imports de React Native, injetável para testes):
@@ -140,7 +140,7 @@ graph TD
 
 ### [TASK-06] Modais de CRUD para Catálogo de Carros e Catálogo de Manutenções
 - **Camada:** `ui`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-05`
 - **Definição de Conclusão (DoD):**
   - Criar `components/admin/CatalogVehicleModal.tsx` (criar/editar veículo do catálogo):

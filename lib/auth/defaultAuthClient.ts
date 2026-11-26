@@ -14,11 +14,18 @@ export function subscribeSessionExpired(
   };
 }
 
-export const defaultAuthClient: AuthClient = createAuthClient({
-  tokenStorage: defaultTokenStorage,
-  onSessionExpired: () => {
-    for (const listener of sessionExpiredListeners) {
-      listener();
-    }
-  },
-});
+export function createDefaultAuthClient(
+  options: { timeoutMs?: number } = {}
+): AuthClient {
+  return createAuthClient({
+    tokenStorage: defaultTokenStorage,
+    timeoutMs: options.timeoutMs,
+    onSessionExpired: () => {
+      for (const listener of sessionExpiredListeners) {
+        listener();
+      }
+    },
+  });
+}
+
+export const defaultAuthClient: AuthClient = createDefaultAuthClient();
