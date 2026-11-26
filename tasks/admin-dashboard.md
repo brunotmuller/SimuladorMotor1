@@ -1,7 +1,7 @@
 # Dashboard do Administrador (Métricas e Gestão de Catálogos) - Plano Técnico de Tarefas
 
 - **Especificação:** `specs/admin-dashboard.md`
-- **Status Geral:** `pending`
+- **Status Geral:** `approved`
 
 ## Grafo de Dependências
 
@@ -174,7 +174,7 @@ graph TD
 
 ### [TASK-08] Testes de aceitação BDD (`spec-verifier`) e validação de build
 - **Camada:** `test`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-04`, `TASK-07`
 - **Definição de Conclusão (DoD):**
   - Criar `server/admin/admin.test.mjs` (`node --test` + SQLite `:memory:`) cobrindo todos os 6 cenários BDD e regras:
