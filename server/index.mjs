@@ -52,7 +52,7 @@ function isOriginAllowed(origin, request, origins, allowLocalDevOrigins) {
     if (
       parsedOrigin.protocol === "https:" &&
       (parsedOrigin.hostname === "torquelab.vercel.app" ||
-        /^torquelab-[a-z0-9-]+\\.vercel\\.app$/i.test(parsedOrigin.hostname))
+        /^torquelab-[a-z0-9-]+\.vercel\.app$/i.test(parsedOrigin.hostname))
     ) {
       return true;
     }
