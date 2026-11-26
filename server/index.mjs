@@ -45,6 +45,21 @@ function isOriginAllowed(origin, request, origins, allowLocalDevOrigins) {
   if (!origin) return true;
   if (origins.has(origin)) return true;
 
+  // Aceita apenas domínios HTTPS do projeto TorqueLab na Vercel,
+  // incluindo URLs únicas de implantação e o domínio estável.
+  try {
+    const parsedOrigin = new URL(origin);
+    if (
+      parsedOrigin.protocol === "https:" &&
+      (parsedOrigin.hostname === "torquelab.vercel.app" ||
+        /^torquelab-[a-z0-9-]+\\.vercel\\.app$/i.test(parsedOrigin.hostname))
+    ) {
+      return true;
+    }
+  } catch {
+    // Origem inválida será rejeitada abaixo.
+  }
+
   const reqHost = request.headers?.host;
   if (
     typeof reqHost === "string" &&
@@ -105,6 +120,9 @@ export function createAppServer({
     }
     if (!seeded) {
       seedInitialAdmin(activeDb, config, hashPassword);
+      const promotion = promoteConfiguredAdmin(activeDb);
+      if (promotion.promoted) console.log(`Conta administrativa habilitada: ${promotion.email}`);
+      else if (promotion.reason === "user_not_found") console.warn(`Conta para promoção administrativa não encontrada: ${promotion.email}`);
       seeded = true;
     }
     return activeDb;
