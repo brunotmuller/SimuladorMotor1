@@ -39,7 +39,7 @@ graph TD
 
 ### [TASK-02] Adaptador assíncrono dual de banco de dados (`node:sqlite` local + `@libsql/client` Turso)
 - **Camada:** `data_model`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `Nenhuma`
 - **Definição de Conclusão (DoD):**
   - Criar `server/db/adapter.mjs` expondo interface assíncrona unificada (`exec`, `get`, `all`, `run`, `transaction`, `close`) para ambos os drivers (`RF-02`).
