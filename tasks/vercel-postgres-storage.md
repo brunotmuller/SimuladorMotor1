@@ -1,7 +1,7 @@
 # Migração de Turso para Vercel Postgres (`Storage -> Neon/Postgres`) - Plano Técnico de Tarefas
 
 - **Especificação:** `specs/vercel-postgres-storage.md`
-- **Status Geral:** `pending`
+- **Status Geral:** `approved`
 
 ## Grafo de Dependências
 
@@ -51,7 +51,7 @@ graph TD
 
 ### [TASK-04] Testes de aceitação BDD (`spec-verifier`) e validação completa
 - **Camada:** `test`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-03`
 - **Definição de Conclusão (DoD):**
   - Atualizar `server/vercel.test.mjs` cobrindo os Cenários 1–5 de `specs/vercel-postgres-storage.md` (incluindo mock de `pg.Pool` sobre `:memory:` validando *cold start* idempotente, `23505` -> `409`, `ECONNREFUSED` -> `503` e `VERCEL=1` sem Postgres -> `503`).
