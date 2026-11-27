@@ -31,7 +31,7 @@ graph TD
 
 ### [TASK-02] Compatibilidade de Schema, Migrations e Seeds entre SQLite e Postgres
 - **Camada:** `service`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-01`
 - **Definição de Conclusão (DoD):**
   - Atualizar `server/auth/db.mjs`: remover `COLLATE NOCASE` no schema Postgres mantendo índice único funcional `idx_users_email_lower` (`LOWER(email)`), substituir `INSERT OR IGNORE INTO users` por `INSERT INTO users ... ON CONFLICT DO NOTHING`, e usar `WHERE LOWER(email) = LOWER(?)` em `promoteConfiguredAdmin` (`RF-02`).
@@ -41,7 +41,7 @@ graph TD
 
 ### [TASK-03] Dependência `pg`, `.env.example` e injeção em `server/index.mjs`
 - **Camada:** `config`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-01`, `TASK-02`
 - **Definição de Conclusão (DoD):**
   - Substituir `@libsql/client` por `"pg": "^8.13.0"` em `package.json` (mantendo `npm run test:*` funcionais offline).

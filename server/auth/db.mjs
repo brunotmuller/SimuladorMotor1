@@ -11,7 +11,7 @@ import { DEFAULT_DB_PATH } from "./config.mjs";
 
 const DEFAULT_ADMIN_NAME = "Administrador TorqueLab";
 
-const SCHEMA_SQL = `
+const SQLITE_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -42,9 +42,45 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id_token_hash
   ON refresh_tokens (user_id, token_hash);
 `;
 
+const POSTGRES_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'blocked')),
+  failed_login_count INTEGER NOT NULL DEFAULT 0,
+  locked_until TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TEXT NOT NULL,
+  revoked_at TEXT,
+  replaced_by_token_id TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_email
+  ON users (email);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower
+  ON users (LOWER(email));
+
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id_token_hash
+  ON refresh_tokens (user_id, token_hash);
+`;
+
 export async function initializeAuthDatabase(db) {
   const adapter = ensureDatabaseAdapter(db);
-  await adapter.exec(SCHEMA_SQL);
+  await adapter.exec(
+    adapter.driver === "postgres" ? POSTGRES_SCHEMA_SQL : SQLITE_SCHEMA_SQL,
+  );
   await ensureDashboardSchema(adapter);
   await seedDefaultCatalogs(adapter);
   return adapter;
@@ -64,7 +100,7 @@ export async function openAuthDatabase(dbPathOrOptions = DEFAULT_DB_PATH) {
         ? dbPathOrOptions.trim()
         : DEFAULT_DB_PATH;
     adapter = await openDatabaseAdapter({
-      env: { ...process.env, TURSO_DATABASE_URL: "" },
+      env: { ...process.env, POSTGRES_URL: "", DATABASE_URL: "" },
       dbPath: targetPath,
     });
   }
@@ -94,7 +130,7 @@ export async function seedInitialAdmin(db, config, hashPasswordFn) {
 
   const normalizedEmail = rawEmail.toLowerCase();
   const existing = await adapter.get(
-    "SELECT id FROM users WHERE email = ? LIMIT 1",
+    "SELECT id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1",
     [normalizedEmail],
   );
 
@@ -116,7 +152,7 @@ export async function seedInitialAdmin(db, config, hashPasswordFn) {
   const passwordHash = hashPasswordFn(rawPassword);
 
   const result = await adapter.run(
-    `INSERT OR IGNORE INTO users (
+    `INSERT INTO users (
       id,
       name,
       email,
@@ -127,13 +163,14 @@ export async function seedInitialAdmin(db, config, hashPasswordFn) {
       locked_until,
       created_at,
       updated_at
-    ) VALUES (?, ?, ?, ?, 'admin', 'active', 0, NULL, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, 'admin', 'active', 0, NULL, ?, ?)
+    ON CONFLICT DO NOTHING`,
     [id, adminName, normalizedEmail, passwordHash, now, now],
   );
 
   if (result.changes === 0) {
     const raced = await adapter.get(
-      "SELECT id FROM users WHERE email = ? LIMIT 1",
+      "SELECT id FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1",
       [normalizedEmail],
     );
     return {
@@ -157,7 +194,7 @@ export async function promoteConfiguredAdmin(db, email = process.env.ADMIN_PROMO
 
   const now = new Date().toISOString();
   const result = await adapter.run(
-    "UPDATE users SET role = 'admin', updated_at = ? WHERE email = ? COLLATE NOCASE",
+    "UPDATE users SET role = 'admin', updated_at = ? WHERE LOWER(email) = LOWER(?)",
     [now, normalizedEmail],
   );
 
