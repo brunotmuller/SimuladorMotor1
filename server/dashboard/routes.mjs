@@ -42,6 +42,7 @@ function sendDashboardError(response, error, sendJson) {
   }
 
   if (isDatabaseError(error)) {
+    console.error("[TorqueLab DB]", error.code ?? error.name, error.message);
     sendJson(response, 503, {
       error: "Serviço temporariamente indisponível. Tente novamente em instantes.",
     });
@@ -76,12 +77,12 @@ export function createDashboardRouter({
     ? createDashboardService({ db, now })
     : null;
 
-  function resolveContext() {
+  async function resolveContext() {
     if (!cachedDb) {
       if (typeof getDb !== "function") {
         throw new Error("SQLITE_UNAVAILABLE: banco de dados indisponível.");
       }
-      cachedDb = getDb();
+      cachedDb = await getDb();
     }
     if (!cachedDashboardService) {
       cachedDashboardService = createDashboardService({ db: cachedDb, now });
@@ -107,10 +108,10 @@ export function createDashboardRouter({
     }
 
     try {
-      const { db: activeDb, dashboardService } = resolveContext();
+      const { db: activeDb, dashboardService } = await resolveContext();
 
       // Todas as rotas do Dashboard exigem usuário autenticado (RN-03)
-      const authUser = authenticateRequest(request, {
+      const authUser = await authenticateRequest(request, {
         db: activeDb,
         config,
         now,
@@ -122,7 +123,7 @@ export function createDashboardRouter({
           return true;
         }
         const vehicleId = urlObj.searchParams.get("vehicleId")?.trim() || null;
-        const dashboard = dashboardService.getDashboard(authUser.id, {
+        const dashboard = await dashboardService.getDashboard(authUser.id, {
           vehicleId,
         });
         sendJson(response, 200, dashboard);
@@ -136,7 +137,7 @@ export function createDashboardRouter({
         }
         const search = urlObj.searchParams.get("search") ?? "";
         const category = urlObj.searchParams.get("category") ?? "";
-        const vehicles = dashboardService.listCatalogVehicles({
+        const vehicles = await dashboardService.listCatalogVehicles({
           search,
           category,
         });
@@ -146,13 +147,13 @@ export function createDashboardRouter({
 
       if (pathname === "/api/user/vehicles") {
         if (request.method === "GET") {
-          const vehicles = dashboardService.listUserVehicles(authUser.id);
+          const vehicles = await dashboardService.listUserVehicles(authUser.id);
           sendJson(response, 200, { vehicles });
           return true;
         }
         if (request.method === "POST") {
           const body = await readJsonBody(request);
-          const result = dashboardService.createVehicle(authUser.id, body);
+          const result = await dashboardService.createVehicle(authUser.id, body);
           sendJson(response, 201, result);
           return true;
         }
@@ -167,7 +168,7 @@ export function createDashboardRouter({
           return true;
         }
         const vehicleId = decodePathParam(selectMatch[1]);
-        const dashboard = dashboardService.selectActiveVehicle(
+        const dashboard = await dashboardService.selectActiveVehicle(
           authUser.id,
           vehicleId,
         );
@@ -180,7 +181,7 @@ export function createDashboardRouter({
         const vehicleId = decodePathParam(itemMatch[1]);
         if (request.method === "PATCH") {
           const body = await readJsonBody(request);
-          const result = dashboardService.updateVehicle(
+          const result = await dashboardService.updateVehicle(
             authUser.id,
             vehicleId,
             body,
@@ -189,7 +190,7 @@ export function createDashboardRouter({
           return true;
         }
         if (request.method === "DELETE") {
-          const result = dashboardService.deleteVehicle(authUser.id, vehicleId);
+          const result = await dashboardService.deleteVehicle(authUser.id, vehicleId);
           sendJson(response, 200, result);
           return true;
         }
@@ -200,7 +201,7 @@ export function createDashboardRouter({
       if (pathname === "/api/user/maintenance-logs") {
         if (request.method === "GET") {
           const vehicleId = urlObj.searchParams.get("vehicleId")?.trim() || null;
-          const logs = dashboardService.listMaintenanceLogs(
+          const logs = await dashboardService.listMaintenanceLogs(
             authUser.id,
             vehicleId,
           );
@@ -209,7 +210,7 @@ export function createDashboardRouter({
         }
         if (request.method === "POST") {
           const body = await readJsonBody(request);
-          const result = dashboardService.createMaintenanceLog(
+          const result = await dashboardService.createMaintenanceLog(
             authUser.id,
             body,
           );

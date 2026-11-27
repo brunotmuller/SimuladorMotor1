@@ -7,15 +7,15 @@ WORKDIR /app
 
 # Instala dependências aproveitando o cache de camadas do Docker
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install --no-audit --no-fund
 
 # Copia o código-fonte do projeto
 COPY . .
 
 # URLs públicas injetadas no bundle Web em tempo de build
-# (por padrão apontam para a mesma porta 3001 onde API + Frontend rodam juntos)
-ARG EXPO_PUBLIC_API_BASE_URL=http://localhost:3001
-ARG EXPO_PUBLIC_PLATE_API_URL=http://localhost:3001/api/vehicles
+# (por padrão usam same-origin para servir API + Frontend no mesmo host)
+ARG EXPO_PUBLIC_API_BASE_URL=same-origin
+ARG EXPO_PUBLIC_PLATE_API_URL=/api/vehicles
 ENV EXPO_PUBLIC_API_BASE_URL=${EXPO_PUBLIC_API_BASE_URL}
 ENV EXPO_PUBLIC_PLATE_API_URL=${EXPO_PUBLIC_PLATE_API_URL}
 ENV HOME=/tmp
@@ -44,7 +44,7 @@ ENV API_HOST=0.0.0.0
 ENV API_PORT=3001
 ENV SERVE_WEB_DIST=true
 ENV WEB_DIST_DIR=/app/dist
-ENV WEB_BASE_PATH=/SimuladorMotor1
+ENV WEB_BASE_PATH=/
 ENV AUTH_DB_PATH=/app/data/torquelab.sqlite
 ENV ALLOWED_ORIGINS=http://localhost:3001,http://127.0.0.1:3001,http://localhost:8081,http://127.0.0.1:8081
 

@@ -4,8 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL:-http://localhost:3001}
-        EXPO_PUBLIC_PLATE_API_URL: ${EXPO_PUBLIC_PLATE_API_URL:-http://localhost:3001/api/vehicles}
+        EXPO_PUBLIC_API_BASE_URL: ${EXPO_PUBLIC_API_BASE_URL:-same-origin}
+        EXPO_PUBLIC_PLATE_API_URL: ${EXPO_PUBLIC_PLATE_API_URL:-/api/vehicles}
     container_name: torquelab-app
     ports:
       - "${API_PORT:-3001}:3001"
@@ -17,7 +17,7 @@ services:
       API_PORT: 3001
       SERVE_WEB_DIST: "true"
       WEB_DIST_DIR: /app/dist
-      WEB_BASE_PATH: /SimuladorMotor1
+      WEB_BASE_PATH: /
       AUTH_DB_PATH: /app/data/torquelab.sqlite
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3001,http://127.0.0.1:3001,http://localhost:8081,http://127.0.0.1:8081}
     volumes:

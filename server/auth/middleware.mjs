@@ -1,3 +1,4 @@
+import { ensureDatabaseAdapter } from "../db/adapter.mjs";
 import { AuthError, toPublicUser } from "./authService.mjs";
 import { verifyAccessToken } from "./crypto.mjs";
 
@@ -14,7 +15,7 @@ export function extractBearerToken(request) {
   return match ? match[1] : null;
 }
 
-export function authenticateRequest(
+export async function authenticateRequest(
   request,
   { db, config, now = () => Date.now() },
 ) {
@@ -28,14 +29,14 @@ export function authenticateRequest(
     throw new AuthError(401, "Autenticação necessária ou sessão expirada.");
   }
 
-  const userRow = db
-    .prepare(
-      `SELECT id, name, email, role, status, created_at
-      FROM users
-      WHERE id = ?
-      LIMIT 1`,
-    )
-    .get(payload.sub);
+  const adapter = ensureDatabaseAdapter(db);
+  const userRow = await adapter.get(
+    `SELECT id, name, email, role, status, created_at
+    FROM users
+    WHERE id = ?
+    LIMIT 1`,
+    [payload.sub],
+  );
 
   if (!userRow) {
     throw new AuthError(401, "Autenticação necessária ou sessão expirada.");

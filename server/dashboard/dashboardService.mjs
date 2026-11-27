@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { ensureDatabaseAdapter } from "../db/adapter.mjs";
 import {
   evaluateVehicleMaintenances,
   inferVehicleCategory,
@@ -87,28 +88,14 @@ export function toMaintenanceLog(row) {
   };
 }
 
-function runInTransaction(db, work) {
-  db.exec("BEGIN");
-  try {
-    const result = work();
-    db.exec("COMMIT");
-    return result;
-  } catch (error) {
-    try {
-      db.exec("ROLLBACK");
-    } catch {
-      // Ignore rollback errors if transaction is already closed.
-    }
-    throw error;
-  }
-}
-
 export function createDashboardService({ db, now = () => Date.now() }) {
   if (!db) {
     throw new TypeError("Instância de banco de dados (db) é obrigatória.");
   }
 
-  function listCatalogVehicles({ search = "", category = "" } = {}) {
+  const adapter = ensureDatabaseAdapter(db);
+
+  async function listCatalogVehicles({ search = "", category = "" } = {}) {
     const conditions = ["active = 1"];
     const params = [];
 
@@ -133,38 +120,37 @@ export function createDashboardService({ db, now = () => Date.now() }) {
       ORDER BY brand ASC, model ASC, year DESC
     `;
 
-    return db.prepare(sql).all(...params).map(toCatalogVehicle);
+    const rows = await adapter.all(sql, params);
+    return rows.map(toCatalogVehicle);
   }
 
-  function listUserVehicles(ownerId) {
-    const rows = db
-      .prepare(
-        `SELECT *
-        FROM user_vehicles
-        WHERE owner_id = ? AND deleted_at IS NULL
-        ORDER BY is_active DESC, updated_at DESC, created_at DESC`,
-      )
-      .all(ownerId);
+  async function listUserVehicles(ownerId) {
+    const rows = await adapter.all(
+      `SELECT *
+      FROM user_vehicles
+      WHERE owner_id = ? AND deleted_at IS NULL
+      ORDER BY is_active DESC, updated_at DESC, created_at DESC`,
+      [ownerId],
+    );
 
     return rows.map(toUserVehicle);
   }
 
-  function getOwnedVehicleRow(ownerId, vehicleId) {
+  async function getOwnedVehicleRow(ownerId, vehicleId) {
     if (typeof vehicleId !== "string" || vehicleId.trim() === "") {
       return null;
     }
-    return db
-      .prepare(
-        `SELECT *
-        FROM user_vehicles
-        WHERE id = ? AND owner_id = ? AND deleted_at IS NULL
-        LIMIT 1`,
-      )
-      .get(vehicleId.trim(), ownerId);
+    return adapter.get(
+      `SELECT *
+      FROM user_vehicles
+      WHERE id = ? AND owner_id = ? AND deleted_at IS NULL
+      LIMIT 1`,
+      [vehicleId.trim(), ownerId],
+    );
   }
 
-  function getDashboard(ownerId, { vehicleId = null } = {}) {
-    const vehicles = listUserVehicles(ownerId);
+  async function getDashboard(ownerId, { vehicleId = null } = {}) {
+    const vehicles = await listUserVehicles(ownerId);
 
     if (vehicles.length === 0) {
       if (vehicleId) {
@@ -190,18 +176,17 @@ export function createDashboardService({ db, now = () => Date.now() }) {
       activeVehicle = vehicles.find((item) => item.isActive) ?? vehicles[0];
     }
 
-    const activeServices = db
-      .prepare("SELECT * FROM catalog_services WHERE active = 1")
-      .all();
+    const activeServices = await adapter.all(
+      "SELECT * FROM catalog_services WHERE active = 1",
+    );
 
-    const logRows = db
-      .prepare(
-        `SELECT *
-        FROM maintenance_logs
-        WHERE vehicle_id = ? AND owner_id = ?
-        ORDER BY performed_at DESC, created_at DESC`,
-      )
-      .all(activeVehicle.id, ownerId);
+    const logRows = await adapter.all(
+      `SELECT *
+      FROM maintenance_logs
+      WHERE vehicle_id = ? AND owner_id = ?
+      ORDER BY performed_at DESC, created_at DESC`,
+      [activeVehicle.id, ownerId],
+    );
 
     const history = logRows.map(toMaintenanceLog);
     const { items, summary } = evaluateVehicleMaintenances(
@@ -221,7 +206,7 @@ export function createDashboardService({ db, now = () => Date.now() }) {
     };
   }
 
-  function createVehicle(ownerId, payload) {
+  async function createVehicle(ownerId, payload) {
     const validation = validateCreateVehiclePayload(payload);
     if (!validation.valid) {
       throw new DashboardError(400, "Dados do veículo inválidos.", {
@@ -229,13 +214,12 @@ export function createDashboardService({ db, now = () => Date.now() }) {
       });
     }
 
-    const activeCountRow = db
-      .prepare(
-        `SELECT COUNT(*) AS count
-        FROM user_vehicles
-        WHERE owner_id = ? AND deleted_at IS NULL`,
-      )
-      .get(ownerId);
+    const activeCountRow = await adapter.get(
+      `SELECT COUNT(*) AS count
+      FROM user_vehicles
+      WHERE owner_id = ? AND deleted_at IS NULL`,
+      [ownerId],
+    );
 
     if (Number(activeCountRow?.count ?? 0) >= MAX_ACTIVE_VEHICLES) {
       throw new DashboardError(
@@ -247,11 +231,10 @@ export function createDashboardService({ db, now = () => Date.now() }) {
     const { data } = validation;
     let catalogRow = null;
     if (data.catalogVehicleId) {
-      catalogRow = db
-        .prepare(
-          "SELECT * FROM catalog_vehicles WHERE id = ? AND active = 1 LIMIT 1",
-        )
-        .get(data.catalogVehicleId);
+      catalogRow = await adapter.get(
+        "SELECT * FROM catalog_vehicles WHERE id = ? AND active = 1 LIMIT 1",
+        [data.catalogVehicleId],
+      );
       if (!catalogRow) {
         throw new DashboardError(400, "Veículo de catálogo inválido.", {
           fields: {
@@ -283,14 +266,15 @@ export function createDashboardService({ db, now = () => Date.now() }) {
     const id = randomUUID();
     const nowIso = new Date(now()).toISOString();
 
-    runInTransaction(db, () => {
-      db.prepare(
+    await adapter.transaction(async (tx) => {
+      await tx.run(
         `UPDATE user_vehicles
         SET is_active = 0, updated_at = ?
         WHERE owner_id = ? AND deleted_at IS NULL AND is_active = 1`,
-      ).run(nowIso, ownerId);
+        [nowIso, ownerId],
+      );
 
-      db.prepare(
+      await tx.run(
         `INSERT INTO user_vehicles (
           id,
           owner_id,
@@ -318,41 +302,42 @@ export function createDashboardService({ db, now = () => Date.now() }) {
           created_at,
           updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, NULL, ?, ?)`,
-      ).run(
-        id,
-        ownerId,
-        catalogRow ? catalogRow.id : null,
-        data.nickname,
-        data.brand,
-        data.model,
-        data.year,
-        data.version,
-        data.fuel,
-        finalCategory,
-        finalCostFactor,
-        data.plate,
-        finalFipePrice,
-        data.fipeCode,
-        data.fipeCached ? 1 : 0,
-        data.currentKm,
-        data.lastRevisionMonths,
-        data.lastRevisionKm,
-        finalHealthScore,
-        finalConsumption,
-        data.isDemo ? 1 : 0,
-        nowIso,
-        nowIso,
+        [
+          id,
+          ownerId,
+          catalogRow ? catalogRow.id : null,
+          data.nickname,
+          data.brand,
+          data.model,
+          data.year,
+          data.version,
+          data.fuel,
+          finalCategory,
+          finalCostFactor,
+          data.plate,
+          finalFipePrice,
+          data.fipeCode,
+          data.fipeCached ? 1 : 0,
+          data.currentKm,
+          data.lastRevisionMonths,
+          data.lastRevisionKm,
+          finalHealthScore,
+          finalConsumption,
+          data.isDemo ? 1 : 0,
+          nowIso,
+          nowIso,
+        ],
       );
     });
 
-    const createdRow = getOwnedVehicleRow(ownerId, id);
+    const createdRow = await getOwnedVehicleRow(ownerId, id);
     const vehicle = toUserVehicle(createdRow);
-    const dashboard = getDashboard(ownerId, { vehicleId: id });
+    const dashboard = await getDashboard(ownerId, { vehicleId: id });
 
     return { vehicle, dashboard };
   }
 
-  function updateVehicle(ownerId, vehicleId, payload) {
+  async function updateVehicle(ownerId, vehicleId, payload) {
     const validation = validateUpdateVehiclePayload(payload);
     if (!validation.valid) {
       throw new DashboardError(400, "Dados de atualização inválidos.", {
@@ -360,7 +345,7 @@ export function createDashboardService({ db, now = () => Date.now() }) {
       });
     }
 
-    const existing = getOwnedVehicleRow(ownerId, vehicleId);
+    const existing = await getOwnedVehicleRow(ownerId, vehicleId);
     if (!existing) {
       throw new DashboardError(404, "Veículo não encontrado.");
     }
@@ -452,7 +437,7 @@ export function createDashboardService({ db, now = () => Date.now() }) {
 
     const nowIso = new Date(now()).toISOString();
 
-    db.prepare(
+    await adapter.run(
       `UPDATE user_vehicles
       SET
         nickname = ?,
@@ -474,106 +459,109 @@ export function createDashboardService({ db, now = () => Date.now() }) {
         estimated_consumption = ?,
         updated_at = ?
       WHERE id = ? AND owner_id = ? AND deleted_at IS NULL`,
-    ).run(
-      nextNickname,
-      nextBrand,
-      nextModel,
-      nextYear,
-      nextVersion,
-      nextFuel,
-      nextCategory,
-      nextCostFactor,
-      nextPlate,
-      nextFipePrice,
-      nextFipeCode,
-      nextFipeCached,
-      nextCurrentKm,
-      nextLastRevisionMonths,
-      nextLastRevisionKm,
-      nextHealthScore,
-      nextEstimatedConsumption,
-      nowIso,
-      existing.id,
-      ownerId,
+      [
+        nextNickname,
+        nextBrand,
+        nextModel,
+        nextYear,
+        nextVersion,
+        nextFuel,
+        nextCategory,
+        nextCostFactor,
+        nextPlate,
+        nextFipePrice,
+        nextFipeCode,
+        nextFipeCached,
+        nextCurrentKm,
+        nextLastRevisionMonths,
+        nextLastRevisionKm,
+        nextHealthScore,
+        nextEstimatedConsumption,
+        nowIso,
+        existing.id,
+        ownerId,
+      ],
     );
 
-    const updatedRow = getOwnedVehicleRow(ownerId, existing.id);
+    const updatedRow = await getOwnedVehicleRow(ownerId, existing.id);
     const vehicle = toUserVehicle(updatedRow);
-    const dashboard = getDashboard(ownerId, { vehicleId: existing.id });
+    const dashboard = await getDashboard(ownerId, { vehicleId: existing.id });
 
     return { vehicle, dashboard };
   }
 
-  function selectActiveVehicle(ownerId, vehicleId) {
-    const existing = getOwnedVehicleRow(ownerId, vehicleId);
+  async function selectActiveVehicle(ownerId, vehicleId) {
+    const existing = await getOwnedVehicleRow(ownerId, vehicleId);
     if (!existing) {
       throw new DashboardError(404, "Veículo não encontrado.");
     }
 
     const nowIso = new Date(now()).toISOString();
 
-    runInTransaction(db, () => {
-      db.prepare(
+    await adapter.transaction(async (tx) => {
+      await tx.run(
         `UPDATE user_vehicles
         SET is_active = 0
         WHERE owner_id = ? AND deleted_at IS NULL AND is_active = 1`,
-      ).run(ownerId);
+        [ownerId],
+      );
 
-      db.prepare(
+      await tx.run(
         `UPDATE user_vehicles
         SET is_active = 1, updated_at = ?
         WHERE id = ? AND owner_id = ? AND deleted_at IS NULL`,
-      ).run(nowIso, existing.id, ownerId);
+        [nowIso, existing.id, ownerId],
+      );
     });
 
     return getDashboard(ownerId, { vehicleId: existing.id });
   }
 
-  function deleteVehicle(ownerId, vehicleId) {
-    const existing = getOwnedVehicleRow(ownerId, vehicleId);
+  async function deleteVehicle(ownerId, vehicleId) {
+    const existing = await getOwnedVehicleRow(ownerId, vehicleId);
     if (!existing) {
       throw new DashboardError(404, "Veículo não encontrado.");
     }
 
     const nowIso = new Date(now()).toISOString();
 
-    const nextActiveVehicleId = runInTransaction(db, () => {
-      db.prepare(
+    const nextActiveVehicleId = await adapter.transaction(async (tx) => {
+      await tx.run(
         `UPDATE user_vehicles
         SET deleted_at = ?, is_active = 0, updated_at = ?
         WHERE id = ? AND owner_id = ? AND deleted_at IS NULL`,
-      ).run(nowIso, nowIso, existing.id, ownerId);
+        [nowIso, nowIso, existing.id, ownerId],
+      );
 
       if (existing.is_active === 1) {
-        const nextCandidate = db
-          .prepare(
-            `SELECT id
-            FROM user_vehicles
-            WHERE owner_id = ? AND deleted_at IS NULL
-            ORDER BY updated_at DESC, created_at DESC
-            LIMIT 1`,
-          )
-          .get(ownerId);
+        const nextCandidate = await tx.get(
+          `SELECT id
+          FROM user_vehicles
+          WHERE owner_id = ? AND deleted_at IS NULL
+          ORDER BY updated_at DESC, created_at DESC
+          LIMIT 1`,
+          [ownerId],
+        );
 
         if (nextCandidate) {
-          db.prepare(
+          await tx.run(
             `UPDATE user_vehicles
             SET is_active = 1, updated_at = ?
             WHERE id = ? AND owner_id = ? AND deleted_at IS NULL`,
-          ).run(nowIso, nextCandidate.id, ownerId);
+            [nowIso, nextCandidate.id, ownerId],
+          );
           return nextCandidate.id;
         }
         return null;
       }
 
-      const currentActive = db
-        .prepare(
-          `SELECT id
-          FROM user_vehicles
-          WHERE owner_id = ? AND deleted_at IS NULL AND is_active = 1
-          LIMIT 1`,
-        )
-        .get(ownerId);
+      const currentActive = await tx.get(
+        `SELECT id
+        FROM user_vehicles
+        WHERE owner_id = ? AND deleted_at IS NULL AND is_active = 1
+        LIMIT 1`,
+        [ownerId],
+      );
 
       return currentActive?.id ?? null;
     });
@@ -581,11 +569,11 @@ export function createDashboardService({ db, now = () => Date.now() }) {
     return {
       deletedId: existing.id,
       nextActiveVehicleId,
-      dashboard: getDashboard(ownerId),
+      dashboard: await getDashboard(ownerId),
     };
   }
 
-  function createMaintenanceLog(ownerId, payload) {
+  async function createMaintenanceLog(ownerId, payload) {
     const validation = validateCreateMaintenanceLogPayload(payload);
     if (!validation.valid) {
       throw new DashboardError(400, "Dados do registro de manutenção inválidos.", {
@@ -594,16 +582,15 @@ export function createDashboardService({ db, now = () => Date.now() }) {
     }
 
     const { data } = validation;
-    const vehicle = getOwnedVehicleRow(ownerId, data.vehicleId);
+    const vehicle = await getOwnedVehicleRow(ownerId, data.vehicleId);
     if (!vehicle) {
       throw new DashboardError(404, "Veículo não encontrado.");
     }
 
-    const service = db
-      .prepare(
-        "SELECT * FROM catalog_services WHERE id = ? AND active = 1 LIMIT 1",
-      )
-      .get(data.serviceId);
+    const service = await adapter.get(
+      "SELECT * FROM catalog_services WHERE id = ? AND active = 1 LIMIT 1",
+      [data.serviceId],
+    );
     if (!service) {
       throw new DashboardError(
         404,
@@ -617,8 +604,8 @@ export function createDashboardService({ db, now = () => Date.now() }) {
     const logId = randomUUID();
     const nowIso = new Date(now()).toISOString();
 
-    runInTransaction(db, () => {
-      db.prepare(
+    await adapter.transaction(async (tx) => {
+      await tx.run(
         `INSERT INTO maintenance_logs (
           id,
           vehicle_id,
@@ -632,65 +619,66 @@ export function createDashboardService({ db, now = () => Date.now() }) {
           notes,
           created_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).run(
-        logId,
-        vehicle.id,
-        ownerId,
-        service.id,
-        service.name,
-        data.performedAt,
-        data.performedKm,
-        data.paidCost,
-        estimatedCost,
-        data.notes,
-        nowIso,
+        [
+          logId,
+          vehicle.id,
+          ownerId,
+          service.id,
+          service.name,
+          data.performedAt,
+          data.performedKm,
+          data.paidCost,
+          estimatedCost,
+          data.notes,
+          nowIso,
+        ],
       );
 
       if (data.performedKm > vehicle.current_km) {
-        db.prepare(
+        await tx.run(
           `UPDATE user_vehicles
           SET current_km = ?, updated_at = ?
           WHERE id = ? AND owner_id = ? AND deleted_at IS NULL`,
-        ).run(data.performedKm, nowIso, vehicle.id, ownerId);
+          [data.performedKm, nowIso, vehicle.id, ownerId],
+        );
       }
     });
 
-    const logRow = db
-      .prepare("SELECT * FROM maintenance_logs WHERE id = ? LIMIT 1")
-      .get(logId);
+    const logRow = await adapter.get(
+      "SELECT * FROM maintenance_logs WHERE id = ? LIMIT 1",
+      [logId],
+    );
     const log = toMaintenanceLog(logRow);
-    const dashboard = getDashboard(ownerId, { vehicleId: vehicle.id });
+    const dashboard = await getDashboard(ownerId, { vehicleId: vehicle.id });
 
     return { log, dashboard };
   }
 
-  function listMaintenanceLogs(ownerId, vehicleId = null) {
+  async function listMaintenanceLogs(ownerId, vehicleId = null) {
     if (vehicleId) {
-      const vehicle = getOwnedVehicleRow(ownerId, vehicleId);
+      const vehicle = await getOwnedVehicleRow(ownerId, vehicleId);
       if (!vehicle) {
         throw new DashboardError(404, "Veículo não encontrado.");
       }
-      return db
-        .prepare(
-          `SELECT *
-          FROM maintenance_logs
-          WHERE vehicle_id = ? AND owner_id = ?
-          ORDER BY performed_at DESC, created_at DESC`,
-        )
-        .all(vehicle.id, ownerId)
-        .map(toMaintenanceLog);
+      const rows = await adapter.all(
+        `SELECT *
+        FROM maintenance_logs
+        WHERE vehicle_id = ? AND owner_id = ?
+        ORDER BY performed_at DESC, created_at DESC`,
+        [vehicle.id, ownerId],
+      );
+      return rows.map(toMaintenanceLog);
     }
 
-    return db
-      .prepare(
-        `SELECT ml.*
-        FROM maintenance_logs ml
-        INNER JOIN user_vehicles uv ON uv.id = ml.vehicle_id
-        WHERE ml.owner_id = ? AND uv.deleted_at IS NULL
-        ORDER BY ml.performed_at DESC, ml.created_at DESC`,
-      )
-      .all(ownerId)
-      .map(toMaintenanceLog);
+    const rows = await adapter.all(
+      `SELECT ml.*
+      FROM maintenance_logs ml
+      INNER JOIN user_vehicles uv ON uv.id = ml.vehicle_id
+      WHERE ml.owner_id = ? AND uv.deleted_at IS NULL
+      ORDER BY ml.performed_at DESC, ml.created_at DESC`,
+      [ownerId],
+    );
+    return rows.map(toMaintenanceLog);
   }
 
   return {

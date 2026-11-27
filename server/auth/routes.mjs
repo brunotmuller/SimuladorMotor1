@@ -1,3 +1,4 @@
+import { isDatabaseAdapterError } from "../db/adapter.mjs";
 import { AuthError, createAuthService } from "./authService.mjs";
 import { authenticateRequest, requireRole } from "./middleware.mjs";
 
@@ -7,11 +8,14 @@ export function isDatabaseError(error) {
   if (!error || typeof error !== "object") {
     return false;
   }
-  if (
-    typeof error.code === "string" &&
-    error.code.toUpperCase().startsWith("ERR_SQLITE")
-  ) {
+  if (isDatabaseAdapterError(error)) {
     return true;
+  }
+  if (typeof error.code === "string") {
+    const upperCode = error.code.toUpperCase();
+    if (upperCode.startsWith("ERR_SQLITE") || upperCode.startsWith("TURSO_")) {
+      return true;
+    }
   }
   if (typeof error.errcode === "number") {
     return true;
@@ -23,6 +27,37 @@ export function isDatabaseError(error) {
 }
 
 export async function readJsonBody(request, maxBytes = DEFAULT_MAX_BODY_BYTES) {
+  if (request?.body !== undefined && request?.body !== null) {
+    if (typeof request.body === "string" || Buffer.isBuffer(request.body)) {
+      const byteLength = Buffer.byteLength(request.body);
+      if (byteLength > maxBytes) {
+        throw new AuthError(413, "Payload excede o tamanho máximo permitido.");
+      }
+      const rawBody = Buffer.isBuffer(request.body)
+        ? request.body.toString("utf8").trim()
+        : request.body.trim();
+      if (rawBody === "") {
+        return {};
+      }
+      let parsedBody;
+      try {
+        parsedBody = JSON.parse(rawBody);
+      } catch {
+        throw new AuthError(400, "Corpo JSON inválido.");
+      }
+      if (!parsedBody || typeof parsedBody !== "object" || Array.isArray(parsedBody)) {
+        throw new AuthError(400, "Corpo JSON inválido.");
+      }
+      return parsedBody;
+    }
+
+    if (typeof request.body === "object" && !Array.isArray(request.body)) {
+      return request.body;
+    }
+
+    throw new AuthError(400, "Corpo JSON inválido.");
+  }
+
   const chunks = [];
   let totalBytes = 0;
 
@@ -80,6 +115,7 @@ function sendRouteError(response, error, sendJson) {
   }
 
   if (isDatabaseError(error)) {
+    console.error("[TorqueLab DB]", error.code ?? error.name, error.message);
     sendJson(response, 503, {
       error: "Serviço temporariamente indisponível. Tente novamente em instantes.",
     });
@@ -102,12 +138,12 @@ export function createAuthRouter({
     ? createAuthService({ db, config, now })
     : null;
 
-  function resolveContext() {
+  async function resolveContext() {
     if (!cachedDb) {
       if (typeof getDb !== "function") {
         throw new Error("SQLITE_UNAVAILABLE: banco de dados indisponível.");
       }
-      cachedDb = getDb();
+      cachedDb = await getDb();
     }
     if (!cachedAuthService) {
       cachedAuthService = createAuthService({ db: cachedDb, config, now });
@@ -131,7 +167,7 @@ export function createAuthRouter({
     }
 
     try {
-      const { db: activeDb, authService } = resolveContext();
+      const { db: activeDb, authService } = await resolveContext();
 
       if (isAuthPath) {
         switch (pathname) {
@@ -141,7 +177,7 @@ export function createAuthRouter({
               return true;
             }
             const body = await readJsonBody(request);
-            const session = authService.register(body);
+            const session = await authService.register(body);
             sendJson(response, 201, session);
             return true;
           }
@@ -153,7 +189,7 @@ export function createAuthRouter({
             }
             const body = await readJsonBody(request);
             const ip = request.socket?.remoteAddress ?? "unknown";
-            const session = authService.login(body, { ip });
+            const session = await authService.login(body, { ip });
             sendJson(response, 200, session);
             return true;
           }
@@ -164,7 +200,7 @@ export function createAuthRouter({
               return true;
             }
             const body = await readJsonBody(request);
-            const session = authService.refresh(body.refreshToken);
+            const session = await authService.refresh(body.refreshToken);
             sendJson(response, 200, session);
             return true;
           }
@@ -175,7 +211,7 @@ export function createAuthRouter({
               return true;
             }
             const body = await readJsonBody(request);
-            authService.logout(body.refreshToken);
+            await authService.logout(body.refreshToken);
             response.writeHead(204, { "Cache-Control": "no-store" });
             response.end();
             return true;
@@ -186,7 +222,7 @@ export function createAuthRouter({
               sendJson(response, 405, { error: "Método não permitido." });
               return true;
             }
-            const user = authenticateRequest(request, {
+            const user = await authenticateRequest(request, {
               db: activeDb,
               config,
               now,
@@ -205,7 +241,7 @@ export function createAuthRouter({
       }
 
       // Prefixo /api/admin/* — exige autenticação + papel admin em qualquer rota
-      const authUser = authenticateRequest(request, {
+      const authUser = await authenticateRequest(request, {
         db: activeDb,
         config,
         now,

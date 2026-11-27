@@ -13,7 +13,7 @@ function createTestServer({
   refreshTtlSeconds = 604800,
 } = {}) {
   let currentNow = startTimeMs;
-  const db = openAuthDatabase(":memory:");
+  let db = null;
   const config = loadAuthConfig({
     NODE_ENV: "test",
     AUTH_JWT_SECRET: "test-secret-with-at-least-thirty-two-characters-12345",
@@ -24,14 +24,15 @@ function createTestServer({
     ADMIN_SEED_PASSWORD: adminSeedPassword,
   });
 
-  const server = createAppServer({
-    authDb: db,
-    authConfig: config,
-    now: () => currentNow,
-    allowedOrigins: ["http://localhost:8081"],
-  });
-
   async function start() {
+    db = await openAuthDatabase(":memory:");
+    const server = createAppServer({
+      authDb: db,
+      authConfig: config,
+      now: () => currentNow,
+      allowedOrigins: ["http://localhost:8081"],
+    });
+    await server.initAuth();
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     const { port } = server.address();
     return {
@@ -92,12 +93,18 @@ function createTestServer({
       },
       async close() {
         await new Promise((resolve) => server.close(resolve));
-        db.close();
+        await db.close();
       },
     };
   }
 
-  return { db, config, start };
+  return {
+    get db() {
+      return db;
+    },
+    config,
+    start,
+  };
 }
 
 test("Cenário 1 (Caminho Feliz): cadastro cria usuário com papel user forçado, senha hasheada e retorna 201", async () => {
@@ -123,9 +130,10 @@ test("Cenário 1 (Caminho Feliz): cadastro cria usuário com papel user forçado
     assert.ok(res.json.tokens.refreshToken.length >= 32);
 
     // Verifica no SQLite que a senha está em Argon2id e nunca em texto puro
-    const row = harness.db
-      .prepare("SELECT password_hash, role FROM users WHERE email = ?")
-      .get("bruno@exemplo.com");
+    const row = await harness.db.get(
+      "SELECT password_hash, role FROM users WHERE email = ?",
+      ["bruno@exemplo.com"],
+    );
     assert.equal(row.role, "user");
     assert.ok(row.password_hash.startsWith("$argon2id$"));
     assert.equal(row.password_hash.includes("Torque2026"), false);
@@ -256,9 +264,10 @@ test("Cenário 5 (Erro/Força bruta): 5 falhas retornam 401 genérico e 6ª tent
     assert.ok(Number(sixth.headers["retry-after"]) > 0);
 
     // Após 15 minutos, desbloqueia e bloqueio de conta inactive/blocked retorna 403
-    harness.db
-      .prepare("UPDATE users SET status = 'blocked', locked_until = NULL WHERE email = ?")
-      .run("bruno@exemplo.com");
+    await harness.db.run(
+      "UPDATE users SET status = 'blocked', locked_until = NULL WHERE email = ?",
+      ["bruno@exemplo.com"],
+    );
 
     const blockedLogin = await app.send("POST", "/api/auth/login", {
       body: {

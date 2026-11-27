@@ -4,13 +4,18 @@ import { pathToFileURL } from "node:url";
 import { createAdminRouter } from "./admin/routes.mjs";
 import { loadAuthConfig } from "./auth/config.mjs";
 import { hashPassword } from "./auth/crypto.mjs";
-import { openAuthDatabase, seedInitialAdmin } from "./auth/db.mjs";
+import {
+  initializeAuthDatabase,
+  openAuthDatabase,
+  promoteConfiguredAdmin,
+  seedInitialAdmin,
+} from "./auth/db.mjs";
 import { createAuthRouter, isDatabaseError } from "./auth/routes.mjs";
 import { createDashboardRouter } from "./dashboard/routes.mjs";
 import { fetchFalconImage, fetchFalconPlate } from "./falcon.mjs";
 import { createStaticWebHandler } from "./static.mjs";
 
-const port = Number(process.env.API_PORT || 3001);
+const port = Number(process.env.PORT || process.env.API_PORT || 3001);
 const host = process.env.API_HOST?.trim() || "0.0.0.0";
 
 function json(response, status, body) {
@@ -45,11 +50,28 @@ function isOriginAllowed(origin, request, origins, allowLocalDevOrigins) {
   if (!origin) return true;
   if (origins.has(origin)) return true;
 
-  const reqHost = request.headers?.host;
+  // Aceita apenas domínios HTTPS do projeto TorqueLab na Vercel,
+  // incluindo URLs únicas de implantação e o domínio estável.
+  try {
+    const parsedOrigin = new URL(origin);
+    if (
+      parsedOrigin.protocol === "https:" &&
+      (parsedOrigin.hostname === "torquelab.vercel.app" ||
+        /^torquelab-[a-z0-9-]+\.vercel\.app$/i.test(parsedOrigin.hostname))
+    ) {
+      return true;
+    }
+  } catch {
+    // Origem inválida será rejeitada abaixo.
+  }
+
+  const reqHost = request.headers?.["x-forwarded-host"] ?? request.headers?.host;
+  const normalizedHost = Array.isArray(reqHost) ? reqHost[0] : reqHost;
   if (
-    typeof reqHost === "string" &&
-    reqHost.trim() !== "" &&
-    (origin === `http://${reqHost}` || origin === `https://${reqHost}`)
+    typeof normalizedHost === "string" &&
+    normalizedHost.trim() !== "" &&
+    (origin === `http://${normalizedHost.trim()}` ||
+      origin === `https://${normalizedHost.trim()}`)
   ) {
     return true;
   }
@@ -64,65 +86,84 @@ function isOriginAllowed(origin, request, origins, allowLocalDevOrigins) {
   return false;
 }
 
-export function createAppServer({
+export function createRequestHandler({
   authDb = null,
   authConfig = null,
+  env = process.env,
+  createLibsqlClient,
   now = () => Date.now(),
   allowedOrigins = null,
   falconToken = null,
   serveWebDist = process.env.SERVE_WEB_DIST === "true",
   webDistDir = process.env.WEB_DIST_DIR || resolve(process.cwd(), "dist"),
-  webBasePath = process.env.WEB_BASE_PATH || "/SimuladorMotor1",
+  webBasePath = process.env.WEB_BASE_PATH || "/",
 } = {}) {
   const token =
-    falconToken !== null ? falconToken : process.env.FALCON_API_TOKEN?.trim();
+    falconToken !== null ? falconToken : env?.FALCON_API_TOKEN?.trim();
   const origins = parseAllowedOrigins(allowedOrigins);
-  const config = authConfig ?? loadAuthConfig(process.env);
+  const config = authConfig ?? loadAuthConfig(env);
   const allowLocalDevOrigins =
     allowedOrigins === null && config.nodeEnv !== "production";
   const attempts = new Map();
 
   let ownedDb = null;
   let activeDb = authDb;
-  let seeded = false;
+  let initPromise = null;
 
-  if (activeDb) {
-    seedInitialAdmin(activeDb, config, hashPassword);
-    seeded = true;
-  }
+  async function ensureAuthDb() {
+    if (!initPromise) {
+      initPromise = (async () => {
+        if (!activeDb) {
+          const targetPath =
+            config.nodeEnv === "test" && !env?.AUTH_DB_PATH
+              ? ":memory:"
+              : config.dbPath;
+          ownedDb = await openAuthDatabase({
+            env,
+            dbPath: targetPath,
+            createLibsqlClient,
+          });
+          activeDb = ownedDb;
+        } else {
+          activeDb = await initializeAuthDatabase(activeDb);
+        }
 
-  function ensureAuthDb() {
-    if (!activeDb) {
-      const targetPath =
-        config.nodeEnv === "test" && !process.env.AUTH_DB_PATH
-          ? ":memory:"
-          : config.dbPath;
-      ownedDb = openAuthDatabase(targetPath);
-      activeDb = ownedDb;
+        await seedInitialAdmin(activeDb, config, hashPassword);
+        const promotion = await promoteConfiguredAdmin(
+          activeDb,
+          env?.ADMIN_PROMOTE_EMAIL,
+        );
+        if (promotion.promoted) {
+          console.log(`Conta administrativa habilitada: ${promotion.email}`);
+        } else if (promotion.reason === "user_not_found") {
+          console.warn(
+            `Conta para promoção administrativa não encontrada: ${promotion.email}`,
+          );
+        }
+
+        return activeDb;
+      })().catch((err) => {
+        initPromise = null;
+        throw err;
+      });
     }
-    if (!seeded) {
-      seedInitialAdmin(activeDb, config, hashPassword);
-      seeded = true;
-    }
-    return activeDb;
+
+    return initPromise;
   }
 
   const handleAdminRoute = createAdminRouter({
-    db: authDb,
     getDb: ensureAuthDb,
     config,
     now,
   });
 
   const handleAuthRoute = createAuthRouter({
-    db: authDb,
     getDb: ensureAuthDb,
     config,
     now,
   });
 
   const handleDashboardRoute = createDashboardRouter({
-    db: authDb,
     getDb: ensureAuthDb,
     config,
     now,
@@ -144,7 +185,7 @@ export function createAppServer({
     return entry.count > 30;
   }
 
-  const appServer = createServer(async (request, response) => {
+  const requestHandler = async (request, response) => {
     try {
       const origin = request.headers.origin;
       if (origin && !isOriginAllowed(origin, request, origins, allowLocalDevOrigins)) {
@@ -214,7 +255,7 @@ export function createAppServer({
       if (!match) {
         return json(response, 404, { error: "Rota não encontrada." });
       }
-      if (limited(request.socket.remoteAddress ?? "unknown")) {
+      if (limited(request.socket?.remoteAddress ?? "unknown")) {
         return json(response, 429, {
           error: "Muitas consultas. Tente novamente em um minuto.",
         });
@@ -246,6 +287,7 @@ export function createAppServer({
         return;
       }
       if (isDatabaseError(error)) {
+        console.error("[TorqueLab DB]", error.code ?? error.name, error.message);
         return json(response, 503, {
           error:
             "Serviço temporariamente indisponível. Tente novamente em instantes.",
@@ -255,28 +297,41 @@ export function createAppServer({
         error: "Erro interno ao processar a solicitação.",
       });
     }
-  });
+  };
 
-  appServer.on("close", () => {
+  requestHandler.initAuth = ensureAuthDb;
+  requestHandler.closeDb = async () => {
     if (ownedDb) {
       try {
-        ownedDb.close();
+        await ownedDb.close();
       } catch {
         // Ignore close errors during shutdown.
       }
       ownedDb = null;
       activeDb = null;
+      initPromise = null;
     }
+  };
+
+  return requestHandler;
+}
+
+export function createAppServer(options = {}) {
+  const requestHandler = createRequestHandler(options);
+  const appServer = createServer(requestHandler);
+
+  appServer.on("close", () => {
+    void requestHandler.closeDb();
   });
 
-  appServer.initAuth = ensureAuthDb;
+  appServer.initAuth = requestHandler.initAuth;
   return appServer;
 }
 
 export const server = createAppServer();
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  server.initAuth();
+  await server.initAuth();
   server.listen(port, host, () => {
     const mode =
       process.env.SERVE_WEB_DIST === "true"

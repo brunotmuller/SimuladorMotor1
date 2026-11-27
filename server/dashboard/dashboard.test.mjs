@@ -9,21 +9,22 @@ function createTestHarness({
   startTimeMs = Date.parse("2026-11-25T12:00:00.000Z"),
 } = {}) {
   let currentNow = startTimeMs;
-  const db = openAuthDatabase(":memory:");
+  let db = null;
   const config = loadAuthConfig({
     NODE_ENV: "test",
     AUTH_JWT_SECRET: "test-dashboard-secret-at-least-thirty-two-chars-99999",
     AUTH_DB_PATH: ":memory:",
   });
 
-  const server = createAppServer({
-    authDb: db,
-    authConfig: config,
-    now: () => currentNow,
-    allowedOrigins: ["http://localhost:8081"],
-  });
-
   async function start() {
+    db = await openAuthDatabase(":memory:");
+    const server = createAppServer({
+      authDb: db,
+      authConfig: config,
+      now: () => currentNow,
+      allowedOrigins: ["http://localhost:8081"],
+    });
+    await server.initAuth();
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     const { port } = server.address();
 
@@ -88,12 +89,17 @@ function createTestHarness({
       },
       async close() {
         await new Promise((resolve) => server.close(resolve));
-        db.close();
+        await db.close();
       },
     };
   }
 
-  return { db, start };
+  return {
+    get db() {
+      return db;
+    },
+    start,
+  };
 }
 
 test("Cenário 5 (Estado Vazio): novo usuário sem veículos recebe empty: true em GET /api/dashboard", async () => {
@@ -274,15 +280,15 @@ test("Cenário 3 (Registrar manutenção): marcar óleo a 60.000 km por R$ 420 r
     assert.ok(logRes.json.dashboard.summary.totalDueCost < totalBefore);
 
     // Catálogo global continua intacto (base_cost = 340)
-    const serviceRow = harness.db
-      .prepare("SELECT base_cost FROM catalog_services WHERE id = 'svc-oil'")
-      .get();
+    const serviceRow = await harness.db.get(
+      "SELECT base_cost FROM catalog_services WHERE id = 'svc-oil'",
+    );
     assert.equal(serviceRow.base_cost, 340);
 
     // RN-02: desativar serviço remove das recomendações futuras, mas mantém no histórico
-    harness.db
-      .prepare("UPDATE catalog_services SET active = 0 WHERE id = 'svc-oil'")
-      .run();
+    await harness.db.run(
+      "UPDATE catalog_services SET active = 0 WHERE id = 'svc-oil'",
+    );
     const afterDeactivate = await app.send("GET", "/api/dashboard", { token });
     assert.equal(
       afterDeactivate.json.maintenances.some((m) => m.serviceId === "svc-oil"),
