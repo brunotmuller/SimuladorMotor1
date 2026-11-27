@@ -1,6 +1,6 @@
 import { ensureDatabaseAdapter } from "../db/adapter.mjs";
 
-const DASHBOARD_SCHEMA_SQL = `
+const SQLITE_DASHBOARD_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS catalog_vehicles (
   id TEXT PRIMARY KEY,
   brand TEXT NOT NULL,
@@ -73,6 +73,102 @@ CREATE TABLE IF NOT EXISTS maintenance_logs (
   notes TEXT,
   created_at TEXT NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS idx_user_vehicles_owner_deleted
+  ON user_vehicles (owner_id, deleted_at);
+
+CREATE INDEX IF NOT EXISTS idx_maintenance_logs_vehicle_service
+  ON maintenance_logs (vehicle_id, service_id);
+
+CREATE INDEX IF NOT EXISTS idx_maintenance_logs_owner_performed
+  ON maintenance_logs (owner_id, performed_at);
+
+CREATE INDEX IF NOT EXISTS idx_catalog_services_active
+  ON catalog_services (active);
+
+CREATE INDEX IF NOT EXISTS idx_catalog_vehicles_active
+  ON catalog_vehicles (active);
+
+CREATE INDEX IF NOT EXISTS idx_user_vehicles_brand_category_deleted
+  ON user_vehicles (brand, category, deleted_at);
+`;
+
+const POSTGRES_DASHBOARD_SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS catalog_vehicles (
+  id TEXT PRIMARY KEY,
+  brand TEXT NOT NULL,
+  model TEXT NOT NULL,
+  year INTEGER NOT NULL,
+  fuel TEXT NOT NULL,
+  category TEXT NOT NULL CHECK (category IN ('compact', 'medium_suv', 'diesel_pickup', 'premium', 'electric')),
+  cost_factor DOUBLE PRECISION NOT NULL DEFAULT 1.0,
+  reference_consumption DOUBLE PRECISION NOT NULL DEFAULT 11.5,
+  fipe_price TEXT,
+  active INTEGER NOT NULL DEFAULT 1,
+  updated_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS catalog_services (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  category TEXT NOT NULL,
+  interval_km INTEGER NOT NULL,
+  interval_months INTEGER,
+  base_cost DOUBLE PRECISION NOT NULL,
+  combustion_only INTEGER NOT NULL DEFAULT 0,
+  notes TEXT,
+  active INTEGER NOT NULL DEFAULT 1,
+  updated_by TEXT REFERENCES users(id),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS user_vehicles (
+  id TEXT PRIMARY KEY,
+  owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  catalog_vehicle_id TEXT REFERENCES catalog_vehicles(id),
+  nickname TEXT,
+  brand TEXT NOT NULL,
+  model TEXT NOT NULL,
+  year INTEGER NOT NULL,
+  version TEXT,
+  fuel TEXT NOT NULL DEFAULT 'Flex',
+  category TEXT NOT NULL DEFAULT 'compact' CHECK (category IN ('compact', 'medium_suv', 'diesel_pickup', 'premium', 'electric')),
+  cost_factor DOUBLE PRECISION NOT NULL DEFAULT 1.0,
+  plate TEXT,
+  fipe_price TEXT,
+  fipe_code TEXT,
+  fipe_cached INTEGER NOT NULL DEFAULT 0,
+  current_km INTEGER NOT NULL,
+  last_revision_months INTEGER NOT NULL DEFAULT 0,
+  last_revision_km INTEGER,
+  health_score INTEGER NOT NULL DEFAULT 85,
+  estimated_consumption DOUBLE PRECISION NOT NULL DEFAULT 11.5,
+  is_active INTEGER NOT NULL DEFAULT 0,
+  is_demo INTEGER NOT NULL DEFAULT 0,
+  deleted_at TEXT,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS maintenance_logs (
+  id TEXT PRIMARY KEY,
+  vehicle_id TEXT NOT NULL REFERENCES user_vehicles(id) ON DELETE CASCADE,
+  owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  service_id TEXT REFERENCES catalog_services(id),
+  service_name TEXT NOT NULL,
+  performed_at TEXT NOT NULL,
+  performed_km INTEGER NOT NULL,
+  paid_cost DOUBLE PRECISION,
+  estimated_cost DOUBLE PRECISION NOT NULL,
+  notes TEXT,
+  created_at TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_catalog_services_name_lower
+  ON catalog_services (LOWER(name));
 
 CREATE INDEX IF NOT EXISTS idx_user_vehicles_owner_deleted
   ON user_vehicles (owner_id, deleted_at);
@@ -280,6 +376,13 @@ export const DEFAULT_CATALOG_SERVICES = Object.freeze([
 
 async function ensureColumnExists(db, tableName, columnName, columnDefinition) {
   const adapter = ensureDatabaseAdapter(db);
+  if (adapter.driver === "postgres") {
+    await adapter.exec(
+      `ALTER TABLE ${tableName} ADD COLUMN IF NOT EXISTS ${columnName} ${columnDefinition}`,
+    );
+    return;
+  }
+
   const columns = await adapter.all(`PRAGMA table_info(${tableName})`);
   const hasColumn = columns.some((column) => column.name === columnName);
   if (!hasColumn) {
@@ -291,7 +394,11 @@ async function ensureColumnExists(db, tableName, columnName, columnDefinition) {
 
 export async function ensureDashboardSchema(db) {
   const adapter = ensureDatabaseAdapter(db);
-  await adapter.exec(DASHBOARD_SCHEMA_SQL);
+  await adapter.exec(
+    adapter.driver === "postgres"
+      ? POSTGRES_DASHBOARD_SCHEMA_SQL
+      : SQLITE_DASHBOARD_SCHEMA_SQL,
+  );
   await ensureColumnExists(
     adapter,
     "catalog_vehicles",
@@ -312,7 +419,7 @@ export async function seedDefaultCatalogs(db) {
   const now = new Date().toISOString();
 
   const insertVehicleSql = `
-    INSERT OR IGNORE INTO catalog_vehicles (
+    INSERT INTO catalog_vehicles (
       id,
       brand,
       model,
@@ -326,10 +433,11 @@ export async function seedDefaultCatalogs(db) {
       created_at,
       updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+    ON CONFLICT DO NOTHING
   `;
 
   const insertServiceSql = `
-    INSERT OR IGNORE INTO catalog_services (
+    INSERT INTO catalog_services (
       id,
       name,
       category,
@@ -342,6 +450,7 @@ export async function seedDefaultCatalogs(db) {
       created_at,
       updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+    ON CONFLICT DO NOTHING
   `;
 
   let vehiclesInserted = 0;

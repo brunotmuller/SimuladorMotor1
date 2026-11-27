@@ -2,9 +2,11 @@ import assert from "node:assert/strict";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import {
+  convertPlaceholdersToPostgres,
   DatabaseAdapterError,
   openDatabaseAdapter,
   resolveDatabaseDriverConfig,
+  wrapPostgresPool,
   wrapSqliteDatabase,
 } from "./adapter.mjs";
 
@@ -26,40 +28,30 @@ test("resolveDatabaseDriverConfig: usa padrão ./data/torquelab.sqlite sem env",
   assert.deepEqual(cfg, { driver: "sqlite", path: "./data/torquelab.sqlite" });
 });
 
-test("resolveDatabaseDriverConfig: seleciona libsql quando TURSO_DATABASE_URL e TURSO_AUTH_TOKEN estão definidos", () => {
+test("resolveDatabaseDriverConfig: prioriza POSTGRES_URL sobre DATABASE_URL e retorna driver postgres", () => {
   const cfg = resolveDatabaseDriverConfig({
-    TURSO_DATABASE_URL: "  libsql://torquelab-db.turso.io  ",
-    TURSO_AUTH_TOKEN: "  secret-token  ",
+    POSTGRES_URL: "  postgres://user:pass@ep-123.neon.tech/neondb?sslmode=require  ",
+    DATABASE_URL: "postgres://other:pass@localhost:5432/other",
   });
   assert.deepEqual(cfg, {
-    driver: "libsql",
-    url: "libsql://torquelab-db.turso.io",
-    authToken: "secret-token",
+    driver: "postgres",
+    connectionString:
+      "postgres://user:pass@ep-123.neon.tech/neondb?sslmode=require",
   });
 });
 
-test("resolveDatabaseDriverConfig: lança 503 TURSO_AUTH_TOKEN_MISSING quando libsql:// ou https:// sem token", () => {
-  for (const url of [
-    "libsql://torquelab-db.turso.io",
-    "https://torquelab-db.turso.io",
-  ]) {
-    assert.throws(
-      () =>
-        resolveDatabaseDriverConfig({
-          TURSO_DATABASE_URL: url,
-          TURSO_AUTH_TOKEN: "   ",
-        }),
-      (err) => {
-        assert.ok(err instanceof DatabaseAdapterError);
-        assert.equal(err.code, "TURSO_AUTH_TOKEN_MISSING");
-        assert.equal(err.status, 503);
-        return true;
-      },
-    );
-  }
+test("resolveDatabaseDriverConfig: aceita DATABASE_URL quando POSTGRES_URL está vazia", () => {
+  const cfg = resolveDatabaseDriverConfig({
+    POSTGRES_URL: "   ",
+    DATABASE_URL: "  postgres://user:pass@localhost:5432/torquelab  ",
+  });
+  assert.deepEqual(cfg, {
+    driver: "postgres",
+    connectionString: "postgres://user:pass@localhost:5432/torquelab",
+  });
 });
 
-test("resolveDatabaseDriverConfig: lança 503 TURSO_CONFIG_MISSING em VERCEL=1 + NODE_ENV=production sem TURSO_DATABASE_URL", () => {
+test("resolveDatabaseDriverConfig: lança 503 POSTGRES_CONFIG_MISSING em VERCEL=1 + NODE_ENV=production sem Postgres", () => {
   assert.throws(
     () =>
       resolveDatabaseDriverConfig({
@@ -68,10 +60,20 @@ test("resolveDatabaseDriverConfig: lança 503 TURSO_CONFIG_MISSING em VERCEL=1 +
       }),
     (err) => {
       assert.ok(err instanceof DatabaseAdapterError);
-      assert.equal(err.code, "TURSO_CONFIG_MISSING");
+      assert.equal(err.code, "POSTGRES_CONFIG_MISSING");
       assert.equal(err.status, 503);
       return true;
     },
+  );
+});
+
+test("convertPlaceholdersToPostgres: converte ? fora de literais string e preserva 'texto com ?' e escape ''", () => {
+  const sql =
+    "SELECT 'texto com ?' AS q, 'O''Brien? ainda ?' AS escaped FROM users WHERE email = ? AND role = ? AND status != 'ativo?'";
+  const converted = convertPlaceholdersToPostgres(sql);
+  assert.equal(
+    converted,
+    "SELECT 'texto com ?' AS q, 'O''Brien? ainda ?' AS escaped FROM users WHERE email = $1 AND role = $2 AND status != 'ativo?'",
   );
 });
 
@@ -136,86 +138,83 @@ test("wrapSqliteDatabase: envolve DatabaseSync existente com interface assíncro
   await db.close();
 });
 
-test("libsql mock: exec (executeMultiple), run, get, all e transaction (commit e rollback)", async () => {
+test("postgres mock: exec, run, get, all, ssl config e transaction (commit, rollback e release)", async () => {
   const calls = {
-    executeMultiple: [],
-    execute: [],
-    txExecute: [],
-    commits: 0,
-    rollbacks: 0,
-    txCloses: 0,
-    clientCloses: 0,
+    poolConfig: null,
+    queries: [],
+    txQueries: [],
+    releases: 0,
+    poolEnds: 0,
   };
 
-  const mockClientFactory = (opts) => {
-    assert.equal(opts.url, "libsql://mock.turso.io");
-    assert.equal(opts.authToken, "mock-token");
-
+  const mockPoolFactory = (opts) => {
+    calls.poolConfig = opts;
     return {
-      async executeMultiple(sql) {
-        calls.executeMultiple.push(sql);
-      },
-      async execute(stmt) {
-        calls.execute.push(stmt);
-        if (stmt.sql.startsWith("INSERT")) {
-          return { rows: [], rowsAffected: 1, lastInsertRowid: 42n };
+      async query(sql, params) {
+        calls.queries.push({ sql, params });
+        if (sql.startsWith("INSERT")) {
+          return { rows: [], rowCount: 1 };
         }
-        if (stmt.sql.includes("WHERE id = ?")) {
+        if (sql.includes("WHERE id = $1")) {
+          return { rows: [{ id: 42, name: "Pastilha" }], rowCount: 1 };
+        }
+        if (sql.startsWith("SELECT id, name FROM a")) {
           return {
-            rows: [{ id: 42, name: "Pastilha" }],
-            rowsAffected: 0,
+            rows: [
+              { id: 1, name: "Óleo" },
+              { id: 42, name: "Pastilha" },
+            ],
+            rowCount: 2,
           };
         }
-        return {
-          rows: [
-            { id: 1, name: "Óleo" },
-            { id: 42, name: "Pastilha" },
-          ],
-          rowsAffected: 0,
-        };
+        return { rows: [], rowCount: 0 };
       },
-      async transaction(mode) {
-        assert.equal(mode, "write");
+      async connect() {
         return {
-          async execute(stmt) {
-            calls.txExecute.push(stmt);
-            return { rows: [], rowsAffected: 1, lastInsertRowid: 43n };
+          async query(sql, params) {
+            calls.txQueries.push({ sql, params });
+            if (sql.startsWith("INSERT")) {
+              return { rows: [], rowCount: 1 };
+            }
+            return { rows: [], rowCount: 0 };
           },
-          async commit() {
-            calls.commits += 1;
-          },
-          async rollback() {
-            calls.rollbacks += 1;
-          },
-          async close() {
-            calls.txCloses += 1;
+          release() {
+            calls.releases += 1;
           },
         };
       },
-      async close() {
-        calls.clientCloses += 1;
+      async end() {
+        calls.poolEnds += 1;
       },
     };
   };
 
   const db = await openDatabaseAdapter({
     env: {
-      TURSO_DATABASE_URL: "libsql://mock.turso.io",
-      TURSO_AUTH_TOKEN: "mock-token",
+      POSTGRES_URL: "postgres://user:pass@ep-123.neon.tech/torquelab?sslmode=require",
     },
-    createLibsqlClient: mockClientFactory,
+    createPgPool: mockPoolFactory,
   });
 
-  assert.equal(db.driver, "libsql");
+  assert.equal(db.driver, "postgres");
+  assert.deepEqual(calls.poolConfig, {
+    connectionString: "postgres://user:pass@ep-123.neon.tech/torquelab?sslmode=require",
+    ssl: { rejectUnauthorized: false },
+    max: 5,
+  });
 
   await db.exec("CREATE TABLE a (id INT); CREATE TABLE b (id INT);");
-  assert.equal(calls.executeMultiple.length, 1);
+  assert.equal(calls.queries[0].sql, "CREATE TABLE a (id INT); CREATE TABLE b (id INT);");
+  assert.equal(calls.queries[0].params, undefined);
 
-  const runRes = await db.run("INSERT INTO a (id) VALUES (?)", [42]);
-  assert.deepEqual(runRes, { changes: 1, lastInsertRowid: 42n });
+  const runRes = await db.run("INSERT INTO a (id, tag) VALUES (?, '?')", [42]);
+  assert.deepEqual(runRes, { changes: 1, lastInsertRowid: null });
+  assert.equal(calls.queries[1].sql, "INSERT INTO a (id, tag) VALUES ($1, '?')");
+  assert.deepEqual(calls.queries[1].params, [42]);
 
   const one = await db.get("SELECT id, name FROM a WHERE id = ?", [42]);
   assert.deepEqual(one, { id: 42, name: "Pastilha" });
+  assert.equal(calls.queries[2].sql, "SELECT id, name FROM a WHERE id = $1");
 
   const many = await db.all("SELECT id, name FROM a");
   assert.equal(many.length, 2);
@@ -227,9 +226,11 @@ test("libsql mock: exec (executeMultiple), run, get, all e transaction (commit e
     return r.changes;
   });
   assert.equal(committed, 1);
-  assert.equal(calls.commits, 1);
-  assert.equal(calls.rollbacks, 0);
-  assert.equal(calls.txCloses, 1);
+  assert.deepEqual(
+    calls.txQueries.map((q) => q.sql),
+    ["BEGIN", "SAVEPOINT sp1", "INSERT INTO a (id) VALUES ($1)", "COMMIT"],
+  );
+  assert.equal(calls.releases, 1);
 
   // Rollback
   await assert.rejects(
@@ -240,44 +241,64 @@ test("libsql mock: exec (executeMultiple), run, get, all e transaction (commit e
       }),
     /erro na transação/,
   );
-  assert.equal(calls.commits, 1);
-  assert.equal(calls.rollbacks, 1);
-  assert.equal(calls.txCloses, 2);
+  assert.deepEqual(
+    calls.txQueries.slice(4).map((q) => q.sql),
+    ["BEGIN", "INSERT INTO a (id) VALUES ($1)", "ROLLBACK"],
+  );
+  assert.equal(calls.releases, 2);
 
   await db.close();
-  assert.equal(calls.clientCloses, 1);
+  assert.equal(calls.poolEnds, 1);
 });
 
-test("libsql mock: mapeia falha de rede/conexão para 503 TURSO_CONNECTION_ERROR e preserva erro de constraint SQL", async () => {
-  const failingClientFactory = () => ({
-    async executeMultiple() {
-      const err = new Error("connect ECONNREFUSED 127.0.0.1:443");
+test("postgres mock: desativa SSL para localhost / 127.0.0.1 / sslmode=disable", async () => {
+  for (const url of [
+    "postgres://postgres:postgres@localhost:5432/torquelab",
+    "postgres://postgres:postgres@127.0.0.1:5432/torquelab",
+    "postgres://user:pass@remote.host:5432/torquelab?sslmode=disable",
+  ]) {
+    let capturedConfig = null;
+    await openDatabaseAdapter({
+      env: { DATABASE_URL: url },
+      createPgPool: (cfg) => {
+        capturedConfig = cfg;
+        return { async query() { return { rows: [], rowCount: 0 }; } };
+      },
+    });
+    assert.equal(capturedConfig.ssl, false);
+    assert.equal(capturedConfig.max, 5);
+  }
+});
+
+test("postgres mock: mapeia ECONNREFUSED/08*/57P* para 503 POSTGRES_CONNECTION_ERROR e preserva erro 23505", async () => {
+  const pool = wrapPostgresPool({
+    async query(sql) {
+      if (sql.includes("UNIQUE_VIOLATION")) {
+        const err = new Error('duplicate key value violates unique constraint "idx_users_email_lower"');
+        err.code = "23505";
+        throw err;
+      }
+      if (sql.includes("ADMIN_SHUTDOWN")) {
+        const err = new Error("terminating connection due to administrator command");
+        err.code = "57P01";
+        throw err;
+      }
+      const err = new Error("connect ECONNREFUSED 127.0.0.1:5432");
       err.code = "ECONNREFUSED";
       throw err;
     },
-    async execute(stmt) {
-      if (stmt.sql.includes("CONSTRAINT")) {
-        const err = new Error("UNIQUE constraint failed: users.email");
-        err.code = "SQLITE_CONSTRAINT_UNIQUE";
-        throw err;
-      }
-      throw new TypeError("fetch failed");
+    async connect() {
+      const err = new Error("connect ECONNREFUSED 127.0.0.1:5432");
+      err.code = "ECONNREFUSED";
+      throw err;
     },
-  });
-
-  const db = await openDatabaseAdapter({
-    env: {
-      TURSO_DATABASE_URL: "libsql://mock.turso.io",
-      TURSO_AUTH_TOKEN: "mock-token",
-    },
-    createLibsqlClient: failingClientFactory,
   });
 
   await assert.rejects(
-    () => db.exec("SELECT 1"),
+    () => pool.exec("SELECT 1"),
     (err) => {
       assert.ok(err instanceof DatabaseAdapterError);
-      assert.equal(err.code, "TURSO_CONNECTION_ERROR");
+      assert.equal(err.code, "POSTGRES_CONNECTION_ERROR");
       assert.equal(err.status, 503);
       assert.equal(
         err.message,
@@ -288,19 +309,29 @@ test("libsql mock: mapeia falha de rede/conexão para 503 TURSO_CONNECTION_ERROR
   );
 
   await assert.rejects(
-    () => db.get("SELECT 1"),
+    () => pool.get("SELECT ADMIN_SHUTDOWN"),
     (err) => {
       assert.ok(err instanceof DatabaseAdapterError);
-      assert.equal(err.code, "TURSO_CONNECTION_ERROR");
+      assert.equal(err.code, "POSTGRES_CONNECTION_ERROR");
       assert.equal(err.status, 503);
       return true;
     },
   );
 
   await assert.rejects(
-    () => db.run("INSERT CONSTRAINT"),
+    () => pool.transaction(async () => {}),
     (err) => {
-      assert.equal(err.code, "SQLITE_CONSTRAINT_UNIQUE");
+      assert.ok(err instanceof DatabaseAdapterError);
+      assert.equal(err.code, "POSTGRES_CONNECTION_ERROR");
+      assert.equal(err.status, 503);
+      return true;
+    },
+  );
+
+  await assert.rejects(
+    () => pool.run("INSERT UNIQUE_VIOLATION"),
+    (err) => {
+      assert.equal(err.code, "23505");
       assert.equal(err instanceof DatabaseAdapterError, false);
       return true;
     },
