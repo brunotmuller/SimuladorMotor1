@@ -41,7 +41,7 @@ graph TD
 
 ### [TASK-03] Dependência `pg`, `.env.example` e injeção em `server/index.mjs`
 - **Camada:** `config`
-- **Status:** `in_progress`
+- **Status:** `approved`
 - **Depende de:** `TASK-01`, `TASK-02`
 - **Definição de Conclusão (DoD):**
   - Substituir `@libsql/client` por `"pg": "^8.13.0"` em `package.json` (mantendo `npm run test:*` funcionais offline).
@@ -51,7 +51,7 @@ graph TD
 
 ### [TASK-04] Testes de aceitação BDD (`spec-verifier`) e validação completa
 - **Camada:** `test`
-- **Status:** `pending`
+- **Status:** `in_progress`
 - **Depende de:** `TASK-03`
 - **Definição de Conclusão (DoD):**
   - Atualizar `server/vercel.test.mjs` cobrindo os Cenários 1–5 de `specs/vercel-postgres-storage.md` (incluindo mock de `pg.Pool` sobre `:memory:` validando *cold start* idempotente, `23505` -> `409`, `ECONNREFUSED` -> `503` e `VERCEL=1` sem Postgres -> `503`).
