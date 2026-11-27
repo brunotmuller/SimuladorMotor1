@@ -90,7 +90,7 @@ export function createRequestHandler({
   authDb = null,
   authConfig = null,
   env = process.env,
-  createLibsqlClient,
+  createPgPool,
   now = () => Date.now(),
   allowedOrigins = null,
   falconToken = null,
@@ -121,7 +121,7 @@ export function createRequestHandler({
           ownedDb = await openAuthDatabase({
             env,
             dbPath: targetPath,
-            createLibsqlClient,
+            createPgPool,
           });
           activeDb = ownedDb;
         } else {

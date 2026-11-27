@@ -68,53 +68,66 @@ async function invokeHandler(handler, { method = "GET", url, headers = {}, body 
   return done;
 }
 
-function createInMemoryLibsqlFactory() {
+function createInMemoryPgPoolFactory() {
   const backingDb = new DatabaseSync(":memory:");
   backingDb.exec("PRAGMA foreign_keys = ON;");
 
-  function wrapExecutor(db) {
+  function toSqliteSql(sql) {
+    // Converte $1, $2... de volta para ? e adapta ADD COLUMN IF NOT EXISTS para rodar no SQLite :memory:
+    const alterMatch = /^ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+IF\s+NOT\s+EXISTS\s+(\w+)\s+(.+)$/i.exec(
+      sql.trim(),
+    );
+    if (alterMatch) {
+      const [, table, col, def] = alterMatch;
+      const cols = backingDb.prepare(`PRAGMA table_info(${table})`).all();
+      if (cols.some((c) => c.name === col)) {
+        return "SELECT 1";
+      }
+      return `ALTER TABLE ${table} ADD COLUMN ${col} ${def}`;
+    }
+    return sql.replace(/\$\d+/g, "?");
+  }
+
+  function wrapQueryExecutor(db) {
     return {
-      async execute(input) {
-        const sql = typeof input === "string" ? input : input.sql;
-        const args = typeof input === "string" ? [] : (input.args ?? []);
-        const stmt = db.prepare(sql);
-        const trimmed = sql.trim().toUpperCase();
+      async query(sql, params = []) {
+        const adapted = toSqliteSql(sql);
+        if (params.length === 0 && adapted.includes(";")) {
+          db.exec(adapted);
+          return { rows: [], rowCount: 0 };
+        }
+        const stmt = db.prepare(adapted);
+        const trimmed = adapted.trim().toUpperCase();
         if (
           trimmed.startsWith("SELECT") ||
           trimmed.startsWith("PRAGMA") ||
           trimmed.startsWith("WITH")
         ) {
-          return { rows: stmt.all(...args), rowsAffected: 0, lastInsertRowid: null };
+          return { rows: stmt.all(...params), rowCount: 0 };
         }
-        const res = stmt.run(...args);
-        return {
-          rows: [],
-          rowsAffected: Number(res?.changes ?? 0),
-          lastInsertRowid: res?.lastInsertRowid ?? null,
-        };
+        try {
+          const res = stmt.run(...params);
+          return { rows: [], rowCount: Number(res?.changes ?? 0) };
+        } catch (err) {
+          if (String(err?.code ?? "").startsWith("SQLITE_CONSTRAINT_UNIQUE")) {
+            err.code = "23505";
+          }
+          throw err;
+        }
       },
     };
   }
 
   const factory = () => ({
-    ...wrapExecutor(backingDb),
-    async executeMultiple(sql) {
-      backingDb.exec(sql);
-    },
-    async transaction() {
-      backingDb.exec("BEGIN");
+    ...wrapQueryExecutor(backingDb),
+    async connect() {
+      const executor = wrapQueryExecutor(backingDb);
       return {
-        ...wrapExecutor(backingDb),
-        async commit() {
-          backingDb.exec("COMMIT");
-        },
-        async rollback() {
-          backingDb.exec("ROLLBACK");
-        },
-        async close() {},
+        ...executor,
+        release() {},
       };
     },
-    async close() {},
+    async end() {},
   });
 
   return { factory, backingDb };
@@ -182,21 +195,20 @@ test("Cenário 1 (Deploy Unificado Same-Origin na Vercel): produção e preview 
   }
 });
 
-test("Cenário 2 (Persistência no Turso entre Cold Starts): instância 2 lê veículo criado na instância 1 sem duplicar schema/seed", async () => {
-  const { factory, backingDb } = createInMemoryLibsqlFactory();
+test("Cenário 2 (Persistência no Postgres entre Cold Starts + unicidade 23505 -> 409): instância 2 lê veículo criado na instância 1 sem duplicar schema/seed", async () => {
+  const { factory, backingDb } = createInMemoryPgPoolFactory();
   const env = {
     NODE_ENV: "production",
     VERCEL: "1",
-    AUTH_JWT_SECRET: "turso-cold-start-secret-at-least-thirty-two-chars-999",
-    TURSO_DATABASE_URL: "libsql://torquelab-test.turso.io",
-    TURSO_AUTH_TOKEN: "turso-test-token",
+    AUTH_JWT_SECRET: "postgres-cold-start-secret-at-least-thirty-two-chars-999",
+    POSTGRES_URL: "postgres://user:pass@ep-cool-rain.us-east-2.aws.neon.tech/neondb?sslmode=require",
     ADMIN_SEED_EMAIL: "admin@torquelab.test",
     ADMIN_SEED_PASSWORD: "AdminPassword123",
   };
 
   const instance1 = createRequestHandler({
     env,
-    createLibsqlClient: factory,
+    createPgPool: factory,
     serveWebDist: false,
   });
 
@@ -207,13 +219,26 @@ test("Cenário 2 (Persistência no Turso entre Cold Starts): instância 2 lê ve
       url: "/api/auth/register",
       headers: { host: "torquelab.vercel.app" },
       body: {
-        name: "Motorista Turso",
-        email: "turso@torquelab.test",
+        name: "Motorista Postgres",
+        email: "pg@torquelab.test",
         password: "Password123",
       },
     });
     assert.equal(reg.status, 201);
     token = reg.json.tokens.accessToken;
+
+    // Unicidade case-insensitive no Postgres retorna 409 Conflict (não 503)
+    const dupReg = await invokeHandler(instance1, {
+      method: "POST",
+      url: "/api/auth/register",
+      headers: { host: "torquelab.vercel.app" },
+      body: {
+        name: "Duplicado",
+        email: "PG@TORQUELAB.TEST",
+        password: "Password123",
+      },
+    });
+    assert.equal(dupReg.status, 409);
 
     const createVeh = await invokeHandler(instance1, {
       method: "POST",
@@ -236,10 +261,10 @@ test("Cenário 2 (Persistência no Turso entre Cold Starts): instância 2 lê ve
     await instance1.closeDb();
   }
 
-  // Segunda instância simulando novo cold start conectando no mesmo Turso
+  // Segunda instância simulando novo cold start conectando no mesmo Postgres
   const instance2 = createRequestHandler({
     env,
-    createLibsqlClient: factory,
+    createPgPool: factory,
     serveWebDist: false,
   });
 
@@ -262,7 +287,7 @@ test("Cenário 2 (Persistência no Turso entre Cold Starts): instância 2 lê ve
   }
 });
 
-test("Cenário 3 (Proteção contra SQLite Efêmero na Vercel): VERCEL=1 + NODE_ENV=production sem TURSO_DATABASE_URL retorna 503", async () => {
+test("Cenário 3 (Proteção contra SQLite Efêmero na Vercel): VERCEL=1 + NODE_ENV=production sem POSTGRES_URL retorna 503", async () => {
   const handler = createRequestHandler({
     env: {
       NODE_ENV: "production",
@@ -349,7 +374,7 @@ test("Cenário 5 (Preflight CORS): origem autorizada -> 204 sem *, origem não a
   assert.equal(blocked.json.error, "Origem não permitida.");
 });
 
-test("Cenário 6 (Configuração Docker Local, Vercel e Package.json): alinhamento de same-origin, Node 24 e @libsql/client", () => {
+test("Cenário 6 (Configuração Docker Local, Vercel e Package.json): alinhamento de same-origin, Node 24 e pg", () => {
   const root = resolve(process.cwd());
   const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8"));
   const vercelJson = JSON.parse(readFileSync(resolve(root, "vercel.json"), "utf8"));
@@ -357,7 +382,8 @@ test("Cenário 6 (Configuração Docker Local, Vercel e Package.json): alinhamen
   const compose = readFileSync(resolve(root, "docker-compose.yml"), "utf8");
 
   assert.equal(pkg.engines?.node, "24.x");
-  assert.ok(pkg.dependencies?.["@libsql/client"]);
+  assert.ok(pkg.dependencies?.pg);
+  assert.equal(pkg.dependencies?.["@libsql/client"], undefined);
   assert.equal(vercelJson.outputDirectory, "dist");
   assert.equal(vercelJson.rewrites[0].source, "/api/(.*)");
   assert.equal(vercelJson.rewrites[0].destination, "/api/[...route]");
