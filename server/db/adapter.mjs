@@ -24,6 +24,10 @@ export class DatabaseAdapterError extends Error {
   }
 }
 
+export function isDatabaseAdapterError(err) {
+  return err instanceof DatabaseAdapterError || err?.name === "DatabaseAdapterError";
+}
+
 function normalizeString(value) {
   return typeof value === "string" ? value.trim() : "";
 }
@@ -356,4 +360,28 @@ export async function openDatabaseAdapter({
   }
 
   return wrapSqliteDatabase(sqliteDb);
+}
+
+/**
+ * Garante que a instância de banco fornecida exponha a interface assíncrona unificada.
+ */
+export function ensureDatabaseAdapter(db) {
+  if (!db || typeof db !== "object") {
+    throw new TypeError("Instância de banco de dados (db) inválida.");
+  }
+  if (
+    typeof db.exec === "function" &&
+    typeof db.get === "function" &&
+    typeof db.all === "function" &&
+    typeof db.run === "function" &&
+    typeof db.transaction === "function"
+  ) {
+    return db;
+  }
+  if (typeof db.prepare === "function") {
+    return wrapSqliteDatabase(db);
+  }
+  throw new TypeError(
+    "Instância de banco de dados incompatível com o adaptador assíncrono.",
+  );
 }

@@ -1,7 +1,7 @@
 # Deploy Full-Stack na Vercel (API Serverless + Turso/libSQL + Same-Origin & Docker Local) - Plano Técnico de Tarefas
 
 - **Especificação:** `specs/vercel-fullstack-deploy.md`
-- **Status Geral:** `pending`
+- **Status Geral:** `done`
 
 ## Grafo de Dependências
 
@@ -39,7 +39,7 @@ graph TD
 
 ### [TASK-02] Adaptador assíncrono dual de banco de dados (`node:sqlite` local + `@libsql/client` Turso)
 - **Camada:** `data_model`
-- **Status:** `in_progress`
+- **Status:** `done`
 - **Depende de:** `Nenhuma`
 - **Definição de Conclusão (DoD):**
   - Criar `server/db/adapter.mjs` expondo interface assíncrona unificada (`exec`, `get`, `all`, `run`, `transaction`, `close`) para ambos os drivers (`RF-02`).
@@ -50,7 +50,7 @@ graph TD
 
 ### [TASK-03] Inicialização idempotente de schemas, migrations e seeds para Cold Start Serverless
 - **Camada:** `service`
-- **Status:** `pending`
+- **Status:** `done`
 - **Depende de:** `TASK-02`
 - **Definição de Conclusão (DoD):**
   - Adaptar `server/auth/db.mjs` e `server/dashboard/db.mjs` para operar sobre o adaptador assíncrono de `server/db/adapter.mjs`.
@@ -59,7 +59,7 @@ graph TD
 
 ### [TASK-04] Adaptação assíncrona dos serviços e rotas (`auth`, `dashboard`, `admin`)
 - **Camada:** `service`
-- **Status:** `pending`
+- **Status:** `done`
 - **Depende de:** `TASK-03`
 - **Definição de Conclusão (DoD):**
   - Atualizar `server/auth/` (`authService.mjs`, `middleware.mjs`, `routes.mjs`), `server/dashboard/` (`dashboardService.mjs`, `routes.mjs`) e `server/admin/` (`adminService.mjs`, `routes.mjs`) para `async/await` sobre o adaptador dual (`RN-03`), preservando bloqueio persistente de tentativas falhas de login na tabela `users` (`RN-05`) e mapeamento de erros de conexão para `503` (`RN-04`).
@@ -67,7 +67,7 @@ graph TD
 
 ### [TASK-05] Entrypoint Serverless da Vercel (`api/[...route].mjs`), `vercel.json` e CORS unificado
 - **Camada:** `api_contract`
-- **Status:** `pending`
+- **Status:** `done`
 - **Depende de:** `TASK-01`, `TASK-04`
 - **Definição de Conclusão (DoD):**
   - Criar `api/[...route].mjs` reutilizando o roteamento HTTP de `server/index.mjs` com inicialização `initPromise` em *cold start* (`RF-01`, `RF-03`).
@@ -77,7 +77,7 @@ graph TD
 
 ### [TASK-06] Suíte de testes BDD (`spec-verifier`) e validação completa de build
 - **Camada:** `test`
-- **Status:** `pending`
+- **Status:** `done`
 - **Depende de:** `TASK-05`
 - **Definição de Conclusão (DoD):**
   - Criar testes automatizados cobrindo os Cenários 1–7 de `specs/vercel-fullstack-deploy.md` (same-origin, cold start idempotente, trava `VERCEL=1` sem Turso, `plateApi.ts` same-origin, CORS `204`/`403` e Docker config).

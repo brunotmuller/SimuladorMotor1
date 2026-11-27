@@ -12,7 +12,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "api": "node --env-file=.env server/index.mjs",
-    "test:api": "node --test server/*.test.mjs",
+    "test:api": "node --test server/*.test.mjs server/db/*.test.mjs",
     "test:auth": "node --test server/auth/*.test.mjs && npx tsc --target ES2022 --module CommonJS --moduleResolution node --esModuleInterop --strict --outDir /tmp/torquelab-auth-tests lib/auth/types.ts lib/auth/tokenStorageCore.ts lib/auth/authClient.ts lib/auth/authClient.test.ts && node --test /tmp/torquelab-auth-tests/authClient.test.js",
     "test:dashboard": "node --test server/dashboard/*.test.mjs && npx tsc --target ES2022 --module CommonJS --moduleResolution node --esModuleInterop --strict --outDir /tmp/torquelab-dashboard-tests lib/auth/types.ts lib/auth/tokenStorageCore.ts lib/auth/authClient.ts lib/dashboard/types.ts lib/dashboard/dashboardClient.ts lib/dashboard/dashboardClient.test.ts && node --test /tmp/torquelab-dashboard-tests/dashboard/dashboardClient.test.js",
     "test:admin": "node --test server/admin/*.test.mjs && npx tsc --target ES2022 --module CommonJS --moduleResolution node --esModuleInterop --strict --outDir /tmp/torquelab-admin-tests lib/auth/types.ts lib/auth/tokenStorageCore.ts lib/auth/authClient.ts lib/dashboard/types.ts lib/admin/types.ts lib/admin/adminClient.ts lib/admin/adminClient.test.ts && node --test /tmp/torquelab-admin-tests/admin/adminClient.test.js",
@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
+    "@libsql/client": "^0.18.0",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
