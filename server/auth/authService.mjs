@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { ensureDatabaseAdapter } from "../db/adapter.mjs";
 import {
   generateRefreshToken,
   hashPassword,
@@ -68,6 +69,7 @@ export function createAuthService({ db, config, now = () => Date.now() }) {
     throw new TypeError("Configuração de autenticação (config) é obrigatória.");
   }
 
+  const adapter = ensureDatabaseAdapter(db);
   const ipAttempts = new Map();
 
   function enforceIpRateLimit(ipKey, currentNow) {
@@ -99,7 +101,7 @@ export function createAuthService({ db, config, now = () => Date.now() }) {
     ipAttempts.set(ipKey, entry);
   }
 
-  function insertRefreshToken(userId, currentNow) {
+  async function insertRefreshToken(userId, currentNow, executor = adapter) {
     const tokenId = randomUUID();
     const rawRefreshToken = generateRefreshToken();
     const tokenHash = hashToken(rawRefreshToken);
@@ -108,7 +110,7 @@ export function createAuthService({ db, config, now = () => Date.now() }) {
       currentNow + config.refreshTtlSeconds * 1000,
     ).toISOString();
 
-    db.prepare(
+    await executor.run(
       `INSERT INTO refresh_tokens (
         id,
         user_id,
@@ -118,18 +120,19 @@ export function createAuthService({ db, config, now = () => Date.now() }) {
         replaced_by_token_id,
         created_at
       ) VALUES (?, ?, ?, ?, NULL, NULL, ?)`,
-    ).run(tokenId, userId, tokenHash, expiresAt, nowIso);
+      [tokenId, userId, tokenHash, expiresAt, nowIso],
+    );
 
     return { tokenId, rawRefreshToken };
   }
 
-  function issueSession(userRow, currentNow) {
+  async function issueSession(userRow, currentNow) {
     const accessToken = signAccessToken(
       { id: userRow.id, role: userRow.role },
       config,
       currentNow,
     );
-    const { rawRefreshToken } = insertRefreshToken(userRow.id, currentNow);
+    const { rawRefreshToken } = await insertRefreshToken(userRow.id, currentNow);
 
     return {
       user: toPublicUser(userRow),
@@ -141,7 +144,7 @@ export function createAuthService({ db, config, now = () => Date.now() }) {
     };
   }
 
-  function register(payload) {
+  async function register(payload) {
     const validation = validateRegisterPayload(payload);
     if (!validation.valid) {
       throw new AuthError(400, "Dados de cadastro inválidos.", {
@@ -151,9 +154,10 @@ export function createAuthService({ db, config, now = () => Date.now() }) {
 
     const { name, email, password } = validation.data;
 
-    const existing = db
-      .prepare("SELECT id FROM users WHERE email = ? LIMIT 1")
-      .get(email);
+    const existing = await adapter.get(
+      "SELECT id FROM users WHERE email = ? LIMIT 1",
+      [email],
+    );
     if (existing) {
       throw new AuthError(409, "Este e-mail já está em uso.");
     }
@@ -164,7 +168,7 @@ export function createAuthService({ db, config, now = () => Date.now() }) {
     const passwordHash = hashPassword(password);
 
     try {
-      db.prepare(
+      await adapter.run(
         `INSERT INTO users (
           id,
           name,
@@ -177,7 +181,8 @@ export function createAuthService({ db, config, now = () => Date.now() }) {
           created_at,
           updated_at
         ) VALUES (?, ?, ?, ?, 'user', 'active', 0, NULL, ?, ?)`,
-      ).run(id, name, email, passwordHash, nowIso, nowIso);
+        [id, name, email, passwordHash, nowIso, nowIso],
+      );
     } catch (error) {
       if (isUniqueConstraintError(error)) {
         throw new AuthError(409, "Este e-mail já está em uso.");
@@ -197,7 +202,7 @@ export function createAuthService({ db, config, now = () => Date.now() }) {
     return issueSession(createdUser, currentNow);
   }
 
-  function login(payload, options = {}) {
+  async function login(payload, options = {}) {
     const currentNow = now();
     const ipKey =
       typeof options?.ip === "string" && options.ip.trim() !== ""
@@ -216,23 +221,22 @@ export function createAuthService({ db, config, now = () => Date.now() }) {
     }
 
     const { email, password } = validation.data;
-    const user = db
-      .prepare(
-        `SELECT
-          id,
-          name,
-          email,
-          password_hash,
-          role,
-          status,
-          failed_login_count,
-          locked_until,
-          created_at
-        FROM users
-        WHERE email = ?
-        LIMIT 1`,
-      )
-      .get(email);
+    const user = await adapter.get(
+      `SELECT
+        id,
+        name,
+        email,
+        password_hash,
+        role,
+        status,
+        failed_login_count,
+        locked_until,
+        created_at
+      FROM users
+      WHERE email = ?
+      LIMIT 1`,
+      [email],
+    );
 
     if (!user) {
       throw new AuthError(401, "E-mail ou senha inválidos.");
@@ -269,25 +273,27 @@ export function createAuthService({ db, config, now = () => Date.now() }) {
           ? new Date(currentNow + ACCOUNT_LOCKOUT_MS).toISOString()
           : null;
 
-      db.prepare(
+      await adapter.run(
         `UPDATE users
         SET failed_login_count = ?, locked_until = ?, updated_at = ?
         WHERE id = ?`,
-      ).run(nextFailedCount, nextLockedUntil, nowIso, user.id);
+        [nextFailedCount, nextLockedUntil, nowIso, user.id],
+      );
 
       throw new AuthError(401, "E-mail ou senha inválidos.");
     }
 
-    db.prepare(
+    await adapter.run(
       `UPDATE users
       SET failed_login_count = 0, locked_until = NULL, updated_at = ?
       WHERE id = ?`,
-    ).run(nowIso, user.id);
+      [nowIso, user.id],
+    );
 
     return issueSession(user, currentNow);
   }
 
-  function refresh(rawRefreshToken) {
+  async function refresh(rawRefreshToken) {
     const token = extractRefreshToken(rawRefreshToken);
     if (!token) {
       throw new AuthError(401, "Token de renovação inválido.");
@@ -297,25 +303,25 @@ export function createAuthService({ db, config, now = () => Date.now() }) {
     const nowIso = new Date(currentNow).toISOString();
     const tokenHash = hashToken(token);
 
-    const tokenRow = db
-      .prepare(
-        `SELECT id, user_id, expires_at, revoked_at, replaced_by_token_id
-        FROM refresh_tokens
-        WHERE token_hash = ?
-        LIMIT 1`,
-      )
-      .get(tokenHash);
+    const tokenRow = await adapter.get(
+      `SELECT id, user_id, expires_at, revoked_at, replaced_by_token_id
+      FROM refresh_tokens
+      WHERE token_hash = ?
+      LIMIT 1`,
+      [tokenHash],
+    );
 
     if (!tokenRow) {
       throw new AuthError(401, "Sessão inválida ou expirada.");
     }
 
     if (tokenRow.revoked_at !== null) {
-      db.prepare(
+      await adapter.run(
         `UPDATE refresh_tokens
         SET revoked_at = ?
         WHERE user_id = ? AND revoked_at IS NULL`,
-      ).run(nowIso, tokenRow.user_id);
+        [nowIso, tokenRow.user_id],
+      );
 
       throw new AuthError(
         401,
@@ -328,14 +334,13 @@ export function createAuthService({ db, config, now = () => Date.now() }) {
       throw new AuthError(401, "Sessão expirada. Faça login novamente.");
     }
 
-    const user = db
-      .prepare(
-        `SELECT id, name, email, role, status, created_at
-        FROM users
-        WHERE id = ?
-        LIMIT 1`,
-      )
-      .get(tokenRow.user_id);
+    const user = await adapter.get(
+      `SELECT id, name, email, role, status, created_at
+      FROM users
+      WHERE id = ?
+      LIMIT 1`,
+      [tokenRow.user_id],
+    );
 
     if (!user) {
       throw new AuthError(401, "Sessão inválida ou expirada.");
@@ -346,40 +351,36 @@ export function createAuthService({ db, config, now = () => Date.now() }) {
     }
 
     let newRawRefreshToken;
-    db.exec("BEGIN");
-    try {
-      const inserted = insertRefreshToken(user.id, currentNow);
-      newRawRefreshToken = inserted.rawRefreshToken;
+    let tokenRaced = false;
 
-      const updated = db
-        .prepare(
+    try {
+      await adapter.transaction(async (tx) => {
+        const inserted = await insertRefreshToken(user.id, currentNow, tx);
+        newRawRefreshToken = inserted.rawRefreshToken;
+
+        const updated = await tx.run(
           `UPDATE refresh_tokens
           SET revoked_at = ?, replaced_by_token_id = ?
           WHERE id = ? AND revoked_at IS NULL`,
-        )
-        .run(nowIso, inserted.tokenId, tokenRow.id);
+          [nowIso, inserted.tokenId, tokenRow.id],
+        );
 
-      if (updated.changes === 0) {
-        db.exec("ROLLBACK");
-        db.prepare(
+        if (updated.changes === 0) {
+          tokenRaced = true;
+          throw new AuthError(
+            401,
+            "Sessão revogada por segurança. Faça login novamente.",
+          );
+        }
+      });
+    } catch (error) {
+      if (tokenRaced) {
+        await adapter.run(
           `UPDATE refresh_tokens
           SET revoked_at = ?
           WHERE user_id = ? AND revoked_at IS NULL`,
-        ).run(nowIso, user.id);
-        throw new AuthError(
-          401,
-          "Sessão revogada por segurança. Faça login novamente.",
+          [nowIso, user.id],
         );
-      }
-
-      db.exec("COMMIT");
-    } catch (error) {
-      if (!(error instanceof AuthError)) {
-        try {
-          db.exec("ROLLBACK");
-        } catch {
-          // Ignore rollback error if transaction already closed.
-        }
       }
       throw error;
     }
@@ -400,37 +401,35 @@ export function createAuthService({ db, config, now = () => Date.now() }) {
     };
   }
 
-  function logout(rawRefreshToken) {
+  async function logout(rawRefreshToken) {
     const token = extractRefreshToken(rawRefreshToken);
     if (!token) {
       return { revoked: false };
     }
 
     const nowIso = new Date(now()).toISOString();
-    const result = db
-      .prepare(
-        `UPDATE refresh_tokens
-        SET revoked_at = ?
-        WHERE token_hash = ? AND revoked_at IS NULL`,
-      )
-      .run(nowIso, hashToken(token));
+    const result = await adapter.run(
+      `UPDATE refresh_tokens
+      SET revoked_at = ?
+      WHERE token_hash = ? AND revoked_at IS NULL`,
+      [nowIso, hashToken(token)],
+    );
 
     return { revoked: result.changes > 0 };
   }
 
-  function getProfile(userId) {
+  async function getProfile(userId) {
     if (typeof userId !== "string" || userId.trim() === "") {
       return null;
     }
 
-    const row = db
-      .prepare(
-        `SELECT id, name, email, role, status, created_at
-        FROM users
-        WHERE id = ?
-        LIMIT 1`,
-      )
-      .get(userId);
+    const row = await adapter.get(
+      `SELECT id, name, email, role, status, created_at
+      FROM users
+      WHERE id = ?
+      LIMIT 1`,
+      [userId],
+    );
 
     return row ? toPublicUser(row) : null;
   }

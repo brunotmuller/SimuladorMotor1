@@ -12,7 +12,7 @@ function createTestHarness({
   startTimeMs = Date.parse("2026-11-26T12:00:00.000Z"),
 } = {}) {
   let currentNow = startTimeMs;
-  const db = openAuthDatabase(":memory:");
+  let db = null;
   const config = loadAuthConfig({
     NODE_ENV: "test",
     AUTH_JWT_SECRET: "test-admin-dashboard-secret-at-least-32-chars-88888",
@@ -21,14 +21,15 @@ function createTestHarness({
     ADMIN_SEED_PASSWORD: ADMIN_PASSWORD,
   });
 
-  const server = createAppServer({
-    authDb: db,
-    authConfig: config,
-    now: () => currentNow,
-    allowedOrigins: ["http://localhost:8081"],
-  });
-
   async function start() {
+    db = await openAuthDatabase(":memory:");
+    const server = createAppServer({
+      authDb: db,
+      authConfig: config,
+      now: () => currentNow,
+      allowedOrigins: ["http://localhost:8081"],
+    });
+    await server.initAuth();
     await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
     const { port } = server.address();
 
@@ -107,12 +108,17 @@ function createTestHarness({
       },
       async close() {
         await new Promise((resolve) => server.close(resolve));
-        db.close();
+        await db.close();
       },
     };
   }
 
-  return { db, start };
+  return {
+    get db() {
+      return db;
+    },
+    start,
+  };
 }
 
 test("Cenário 1 (Visualização de KPIs reais): GET /api/admin/overview retorna contagens exatas separando user de admin", async () => {

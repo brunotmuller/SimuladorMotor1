@@ -1,3 +1,5 @@
+import { ensureDatabaseAdapter } from "../db/adapter.mjs";
+
 const DASHBOARD_SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS catalog_vehicles (
   id TEXT PRIMARY KEY,
@@ -276,37 +278,40 @@ export const DEFAULT_CATALOG_SERVICES = Object.freeze([
   },
 ]);
 
-function ensureColumnExists(db, tableName, columnName, columnDefinition) {
-  const columns = db.prepare(`PRAGMA table_info(${tableName})`).all();
+async function ensureColumnExists(db, tableName, columnName, columnDefinition) {
+  const adapter = ensureDatabaseAdapter(db);
+  const columns = await adapter.all(`PRAGMA table_info(${tableName})`);
   const hasColumn = columns.some((column) => column.name === columnName);
   if (!hasColumn) {
-    db.exec(
+    await adapter.exec(
       `ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${columnDefinition}`,
     );
   }
 }
 
-export function ensureDashboardSchema(db) {
-  db.exec(DASHBOARD_SCHEMA_SQL);
-  ensureColumnExists(
-    db,
+export async function ensureDashboardSchema(db) {
+  const adapter = ensureDatabaseAdapter(db);
+  await adapter.exec(DASHBOARD_SCHEMA_SQL);
+  await ensureColumnExists(
+    adapter,
     "catalog_vehicles",
     "updated_by",
     "TEXT REFERENCES users(id)",
   );
-  ensureColumnExists(
-    db,
+  await ensureColumnExists(
+    adapter,
     "catalog_services",
     "updated_by",
     "TEXT REFERENCES users(id)",
   );
-  ensureColumnExists(db, "user_vehicles", "last_revision_km", "INTEGER");
+  await ensureColumnExists(adapter, "user_vehicles", "last_revision_km", "INTEGER");
 }
 
-export function seedDefaultCatalogs(db) {
+export async function seedDefaultCatalogs(db) {
+  const adapter = ensureDatabaseAdapter(db);
   const now = new Date().toISOString();
 
-  const insertVehicle = db.prepare(`
+  const insertVehicleSql = `
     INSERT OR IGNORE INTO catalog_vehicles (
       id,
       brand,
@@ -321,9 +326,9 @@ export function seedDefaultCatalogs(db) {
       created_at,
       updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-  `);
+  `;
 
-  const insertService = db.prepare(`
+  const insertServiceSql = `
     INSERT OR IGNORE INTO catalog_services (
       id,
       name,
@@ -337,15 +342,14 @@ export function seedDefaultCatalogs(db) {
       created_at,
       updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
-  `);
+  `;
 
   let vehiclesInserted = 0;
   let servicesInserted = 0;
 
-  db.exec("BEGIN");
-  try {
+  await adapter.transaction(async (tx) => {
     for (const vehicle of DEFAULT_CATALOG_VEHICLES) {
-      const result = insertVehicle.run(
+      const result = await tx.run(insertVehicleSql, [
         vehicle.id,
         vehicle.brand,
         vehicle.model,
@@ -357,12 +361,12 @@ export function seedDefaultCatalogs(db) {
         vehicle.fipePrice,
         now,
         now,
-      );
+      ]);
       vehiclesInserted += result.changes;
     }
 
     for (const service of DEFAULT_CATALOG_SERVICES) {
-      const result = insertService.run(
+      const result = await tx.run(insertServiceSql, [
         service.id,
         service.name,
         service.category,
@@ -373,19 +377,10 @@ export function seedDefaultCatalogs(db) {
         service.notes,
         now,
         now,
-      );
+      ]);
       servicesInserted += result.changes;
     }
-
-    db.exec("COMMIT");
-  } catch (error) {
-    try {
-      db.exec("ROLLBACK");
-    } catch {
-      // Ignore rollback errors if transaction is already closed.
-    }
-    throw error;
-  }
+  });
 
   return { vehiclesInserted, servicesInserted };
 }

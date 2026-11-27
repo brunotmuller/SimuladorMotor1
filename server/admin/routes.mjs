@@ -66,6 +66,7 @@ function sendAdminError(response, error, sendJson) {
   }
 
   if (isDatabaseError(error)) {
+    console.error("[TorqueLab DB]", error.code ?? error.name, error.message);
     sendJson(response, 503, {
       error: "Serviço temporariamente indisponível. Tente novamente em instantes.",
     });
@@ -86,12 +87,12 @@ export function createAdminRouter({
   let cachedDb = db;
   let cachedAdminService = db ? createAdminService({ db, now }) : null;
 
-  function resolveContext() {
+  async function resolveContext() {
     if (!cachedDb) {
       if (typeof getDb !== "function") {
         throw new Error("SQLITE_UNAVAILABLE: banco de dados indisponível.");
       }
-      cachedDb = getDb();
+      cachedDb = await getDb();
     }
     if (!cachedAdminService) {
       cachedAdminService = createAdminService({ db: cachedDb, now });
@@ -117,10 +118,10 @@ export function createAdminRouter({
     }
 
     try {
-      const { db: activeDb, adminService } = resolveContext();
+      const { db: activeDb, adminService } = await resolveContext();
 
       // Todas as rotas /api/admin/* exigem JWT válido + role === "admin" (RN-03, Cenário 6)
-      const authUser = authenticateRequest(request, {
+      const authUser = await authenticateRequest(request, {
         db: activeDb,
         config,
         now,
@@ -145,7 +146,7 @@ export function createAdminRouter({
           sendJson(response, 405, { error: "Método não permitido." });
           return true;
         }
-        sendJson(response, 200, adminService.getOverview());
+        sendJson(response, 200, await adminService.getOverview());
         return true;
       }
 
@@ -191,7 +192,7 @@ export function createAdminRouter({
           });
         }
 
-        const result = adminService.listUserVehicles({
+        const result = await adminService.listUserVehicles({
           page: pagination.data.page,
           limit: pagination.data.limit,
           search: urlObj.searchParams.get("search") ?? "",
@@ -214,7 +215,7 @@ export function createAdminRouter({
             });
           }
 
-          const result = adminService.listCatalogVehicles({
+          const result = await adminService.listCatalogVehicles({
             page: pagination.data.page,
             limit: pagination.data.limit,
             search: urlObj.searchParams.get("search") ?? "",
@@ -229,7 +230,7 @@ export function createAdminRouter({
 
         if (request.method === "POST") {
           const body = await readJsonBody(request);
-          const vehicle = adminService.createCatalogVehicle(authUser.id, body);
+          const vehicle = await adminService.createCatalogVehicle(authUser.id, body);
           sendJson(response, 201, { vehicle });
           return true;
         }
@@ -248,7 +249,7 @@ export function createAdminRouter({
         const vehicleId = decodePathId(catalogVehicleMatch[1]);
         if (request.method === "PATCH") {
           const body = await readJsonBody(request);
-          const vehicle = adminService.updateCatalogVehicle(
+          const vehicle = await adminService.updateCatalogVehicle(
             authUser.id,
             vehicleId,
             body,
@@ -283,7 +284,7 @@ export function createAdminRouter({
                 ? false
                 : "all";
 
-          const result = adminService.listCatalogServices({
+          const result = await adminService.listCatalogServices({
             page: pagination.data.page,
             limit: pagination.data.limit,
             search: urlObj.searchParams.get("search") ?? "",
@@ -298,7 +299,7 @@ export function createAdminRouter({
 
         if (request.method === "POST") {
           const body = await readJsonBody(request);
-          const service = adminService.createCatalogService(authUser.id, body);
+          const service = await adminService.createCatalogService(authUser.id, body);
           sendJson(response, 201, { service });
           return true;
         }
@@ -317,7 +318,7 @@ export function createAdminRouter({
         const serviceId = decodePathId(catalogServiceMatch[1]);
         if (request.method === "PATCH") {
           const body = await readJsonBody(request);
-          const service = adminService.updateCatalogService(
+          const service = await adminService.updateCatalogService(
             authUser.id,
             serviceId,
             body,

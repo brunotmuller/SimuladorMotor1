@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
-import { DatabaseSync } from "node:sqlite";
+import {
+  ensureDatabaseAdapter,
+  openDatabaseAdapter,
+} from "../db/adapter.mjs";
 import {
   ensureDashboardSchema,
   seedDefaultCatalogs,
@@ -41,31 +42,39 @@ CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id_token_hash
   ON refresh_tokens (user_id, token_hash);
 `;
 
-export function openAuthDatabase(dbPath = DEFAULT_DB_PATH) {
-  const targetPath =
-    typeof dbPath === "string" && dbPath.trim() !== ""
-      ? dbPath.trim()
-      : DEFAULT_DB_PATH;
-
-  if (targetPath !== ":memory:") {
-    mkdirSync(dirname(targetPath), { recursive: true });
-  }
-
-  const db = new DatabaseSync(targetPath);
-
-  db.exec("PRAGMA foreign_keys = ON;");
-  if (targetPath !== ":memory:") {
-    db.exec("PRAGMA journal_mode = WAL;");
-  }
-
-  db.exec(SCHEMA_SQL);
-  ensureDashboardSchema(db);
-  seedDefaultCatalogs(db);
-
-  return db;
+export async function initializeAuthDatabase(db) {
+  const adapter = ensureDatabaseAdapter(db);
+  await adapter.exec(SCHEMA_SQL);
+  await ensureDashboardSchema(adapter);
+  await seedDefaultCatalogs(adapter);
+  return adapter;
 }
 
-export function seedInitialAdmin(db, config, hashPasswordFn) {
+export async function openAuthDatabase(dbPathOrOptions = DEFAULT_DB_PATH) {
+  let adapter;
+  if (
+    dbPathOrOptions &&
+    typeof dbPathOrOptions === "object" &&
+    !Array.isArray(dbPathOrOptions)
+  ) {
+    adapter = await openDatabaseAdapter(dbPathOrOptions);
+  } else {
+    const targetPath =
+      typeof dbPathOrOptions === "string" && dbPathOrOptions.trim() !== ""
+        ? dbPathOrOptions.trim()
+        : DEFAULT_DB_PATH;
+    adapter = await openDatabaseAdapter({
+      env: { ...process.env, TURSO_DATABASE_URL: "" },
+      dbPath: targetPath,
+    });
+  }
+
+  await initializeAuthDatabase(adapter);
+  return adapter;
+}
+
+export async function seedInitialAdmin(db, config, hashPasswordFn) {
+  const adapter = ensureDatabaseAdapter(db);
   const rawEmail =
     typeof config?.adminSeedEmail === "string"
       ? config.adminSeedEmail.trim()
@@ -84,9 +93,10 @@ export function seedInitialAdmin(db, config, hashPasswordFn) {
   }
 
   const normalizedEmail = rawEmail.toLowerCase();
-  const existing = db
-    .prepare("SELECT id FROM users WHERE email = ? LIMIT 1")
-    .get(normalizedEmail);
+  const existing = await adapter.get(
+    "SELECT id FROM users WHERE email = ? LIMIT 1",
+    [normalizedEmail],
+  );
 
   if (existing) {
     return {
@@ -105,27 +115,27 @@ export function seedInitialAdmin(db, config, hashPasswordFn) {
       : DEFAULT_ADMIN_NAME;
   const passwordHash = hashPasswordFn(rawPassword);
 
-  const result = db
-    .prepare(
-      `INSERT OR IGNORE INTO users (
-        id,
-        name,
-        email,
-        password_hash,
-        role,
-        status,
-        failed_login_count,
-        locked_until,
-        created_at,
-        updated_at
-      ) VALUES (?, ?, ?, ?, 'admin', 'active', 0, NULL, ?, ?)`,
-    )
-    .run(id, adminName, normalizedEmail, passwordHash, now, now);
+  const result = await adapter.run(
+    `INSERT OR IGNORE INTO users (
+      id,
+      name,
+      email,
+      password_hash,
+      role,
+      status,
+      failed_login_count,
+      locked_until,
+      created_at,
+      updated_at
+    ) VALUES (?, ?, ?, ?, 'admin', 'active', 0, NULL, ?, ?)`,
+    [id, adminName, normalizedEmail, passwordHash, now, now],
+  );
 
   if (result.changes === 0) {
-    const raced = db
-      .prepare("SELECT id FROM users WHERE email = ? LIMIT 1")
-      .get(normalizedEmail);
+    const raced = await adapter.get(
+      "SELECT id FROM users WHERE email = ? LIMIT 1",
+      [normalizedEmail],
+    );
     return {
       seeded: false,
       reason: "already_exists",
@@ -140,14 +150,16 @@ export function seedInitialAdmin(db, config, hashPasswordFn) {
   };
 }
 
-export function promoteConfiguredAdmin(db, email = process.env.ADMIN_PROMOTE_EMAIL) {
+export async function promoteConfiguredAdmin(db, email = process.env.ADMIN_PROMOTE_EMAIL) {
+  const adapter = ensureDatabaseAdapter(db);
   const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
   if (!normalizedEmail) return { promoted: false, reason: "not_configured" };
 
   const now = new Date().toISOString();
-  const result = db
-    .prepare("UPDATE users SET role = 'admin', updated_at = ? WHERE email = ? COLLATE NOCASE")
-    .run(now, normalizedEmail);
+  const result = await adapter.run(
+    "UPDATE users SET role = 'admin', updated_at = ? WHERE email = ? COLLATE NOCASE",
+    [now, normalizedEmail],
+  );
 
   return result.changes > 0
     ? { promoted: true, email: normalizedEmail }

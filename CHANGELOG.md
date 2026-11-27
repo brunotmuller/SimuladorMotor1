@@ -2,6 +2,20 @@
 
 Todas as mudanças relevantes do **TorqueLab** serão documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [2026-11-27] - vercel-fullstack-deploy
+
+### Adicionado
+- Deploy full-stack unificado na **Vercel** (`vercel.json` + entrypoint *serverless* `api/[...route].mjs`) servindo o Frontend Expo Web (`dist/`) e todas as rotas `/api/*` no mesmo domínio (`same-origin`), eliminando bloqueios de CORS em produção e previews (`RF-01`, `RN-01`).
+- **[RF-02 / RN-02]** Adaptador assíncrono dual de banco de dados (`server/db/adapter.mjs`) suportando `@libsql/client` (**Turso**) em produção na Vercel (`TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN`) e `node:sqlite` localmente, no Docker e nos testes (`:memory:`), com bloqueio explícito (`503 TURSO_CONFIG_MISSING`) caso `VERCEL=1` + `NODE_ENV=production` rode sem Turso configurado.
+- **[RF-03]** Inicialização idempotente de schema, migrations (`updated_by`, `last_revision_km`) e seeds sob singleton `initPromise` para *cold start* *serverless* (`server/auth/db.mjs`, `server/dashboard/db.mjs`).
+- Suítes de testes automatizados em `server/db/adapter.test.mjs` (10 testes) e `server/vercel.test.mjs` (6 cenários BDD cobrindo *same-origin*, *cold start*, trava `VERCEL=1` sem Turso, `/api/vehicles/:plate`, CORS `204`/`403` e alinhamento Docker/Vercel).
+
+### Corrigido / Alterado
+- Convertidos os serviços e rotas de `auth`, `dashboard` e `admin` para execução assíncrona (`async/await`) sobre o adaptador dual, mantendo persistência global de bloqueio de login (`failed_login_count`, `locked_until`) e retorno `503` em falhas de conexão Turso (`RN-04`, `RN-05`).
+- Atualizado `app/(tabs)/services/plateApi.ts` (`resolvePlateApiEndpoint`) para suportar `same-origin` e caminhos relativos `/api/vehicles` (`RF-04`).
+- Fixado `"engines": { "node": "24.x" }` em `package.json` para garantir `argon2Sync` nativo na Vercel (`RN-03`).
+- Alinhados `Dockerfile`, `docker-compose.yml` e `.env.example` para `WEB_BASE_PATH=/`, `EXPO_PUBLIC_API_BASE_URL=same-origin` e `EXPO_PUBLIC_PLATE_API_URL=/api/vehicles` em ambiente Docker local (`RF-05`).
+
 ## [2026-11-26] - admin-dashboard
 
 ### Adicionado

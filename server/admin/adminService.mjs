@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { ensureDatabaseAdapter } from "../db/adapter.mjs";
 import {
   validateCreateCatalogService,
   validateCreateCatalogVehicle,
@@ -107,49 +108,44 @@ export function createAdminService({ db, now = () => Date.now() }) {
     throw new TypeError("Instância de banco de dados (db) é obrigatória.");
   }
 
-  function getOverview() {
+  const adapter = ensureDatabaseAdapter(db);
+
+  async function getOverview() {
     const currentNow = now();
     const generatedAt = new Date(currentNow).toISOString();
     const thirtyDaysAgoIso = new Date(currentNow - THIRTY_DAYS_MS).toISOString();
 
-    const userStats = db
-      .prepare(
-        `SELECT
-          COALESCE(SUM(CASE WHEN role = 'user' THEN 1 ELSE 0 END), 0) AS total,
-          COALESCE(SUM(CASE WHEN role = 'user' AND status = 'active' THEN 1 ELSE 0 END), 0) AS active,
-          COALESCE(SUM(CASE WHEN role = 'user' AND created_at >= ? THEN 1 ELSE 0 END), 0) AS new_last_30_days,
-          COALESCE(SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END), 0) AS admin_count
-        FROM users`,
-      )
-      .get(thirtyDaysAgoIso);
+    const userStats = await adapter.get(
+      `SELECT
+        COALESCE(SUM(CASE WHEN role = 'user' THEN 1 ELSE 0 END), 0) AS total,
+        COALESCE(SUM(CASE WHEN role = 'user' AND status = 'active' THEN 1 ELSE 0 END), 0) AS active,
+        COALESCE(SUM(CASE WHEN role = 'user' AND created_at >= ? THEN 1 ELSE 0 END), 0) AS new_last_30_days,
+        COALESCE(SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END), 0) AS admin_count
+      FROM users`,
+      [thirtyDaysAgoIso],
+    );
 
-    const catalogVehicleStats = db
-      .prepare(
-        `SELECT
-          COUNT(*) AS total,
-          COALESCE(SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END), 0) AS active,
-          COALESCE(SUM(CASE WHEN active = 0 THEN 1 ELSE 0 END), 0) AS inactive
-        FROM catalog_vehicles`,
-      )
-      .get();
+    const catalogVehicleStats = await adapter.get(
+      `SELECT
+        COUNT(*) AS total,
+        COALESCE(SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END), 0) AS active,
+        COALESCE(SUM(CASE WHEN active = 0 THEN 1 ELSE 0 END), 0) AS inactive
+      FROM catalog_vehicles`,
+    );
 
-    const userVehicleStats = db
-      .prepare(
-        `SELECT COUNT(*) AS total
-        FROM user_vehicles
-        WHERE deleted_at IS NULL`,
-      )
-      .get();
+    const userVehicleStats = await adapter.get(
+      `SELECT COUNT(*) AS total
+      FROM user_vehicles
+      WHERE deleted_at IS NULL`,
+    );
 
-    const catalogServiceStats = db
-      .prepare(
-        `SELECT
-          COUNT(*) AS total,
-          COALESCE(SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END), 0) AS active,
-          COALESCE(SUM(CASE WHEN active = 0 THEN 1 ELSE 0 END), 0) AS inactive
-        FROM catalog_services`,
-      )
-      .get();
+    const catalogServiceStats = await adapter.get(
+      `SELECT
+        COUNT(*) AS total,
+        COALESCE(SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END), 0) AS active,
+        COALESCE(SUM(CASE WHEN active = 0 THEN 1 ELSE 0 END), 0) AS inactive
+      FROM catalog_services`,
+    );
 
     const activeUsersCount = Number(userStats?.active ?? 0);
     const totalUserVehicles = Number(userVehicleStats?.total ?? 0);
@@ -183,7 +179,7 @@ export function createAdminService({ db, now = () => Date.now() }) {
     };
   }
 
-  function listUserVehicles({
+  async function listUserVehicles({
     page = 1,
     limit = 20,
     search = "",
@@ -230,54 +226,51 @@ export function createAdminService({ db, now = () => Date.now() }) {
     const whereClause = conditions.join(" AND ");
     const offset = (page - 1) * limit;
 
-    const totalRow = db
-      .prepare(
-        `SELECT COUNT(*) AS total
-        FROM user_vehicles uv
-        INNER JOIN users u ON u.id = uv.owner_id
-        WHERE ${whereClause}`,
-      )
-      .get(...params);
+    const totalRow = await adapter.get(
+      `SELECT COUNT(*) AS total
+      FROM user_vehicles uv
+      INNER JOIN users u ON u.id = uv.owner_id
+      WHERE ${whereClause}`,
+      params,
+    );
 
     const total = Number(totalRow?.total ?? 0);
 
-    const rows = db
-      .prepare(
-        `SELECT
-          uv.id,
-          uv.brand,
-          uv.model,
-          uv.year,
-          uv.version,
-          uv.nickname,
-          uv.current_km,
-          uv.category,
-          uv.fuel,
-          uv.created_at,
-          u.name AS owner_name,
-          u.email AS owner_email
-        FROM user_vehicles uv
-        INNER JOIN users u ON u.id = uv.owner_id
-        WHERE ${whereClause}
-        ORDER BY uv.created_at DESC, uv.id DESC
-        LIMIT ? OFFSET ?`,
-      )
-      .all(...params, limit, offset);
+    const rows = await adapter.all(
+      `SELECT
+        uv.id,
+        uv.brand,
+        uv.model,
+        uv.year,
+        uv.version,
+        uv.nickname,
+        uv.current_km,
+        uv.category,
+        uv.fuel,
+        uv.created_at,
+        u.name AS owner_name,
+        u.email AS owner_email
+      FROM user_vehicles uv
+      INNER JOIN users u ON u.id = uv.owner_id
+      WHERE ${whereClause}
+      ORDER BY uv.created_at DESC, uv.id DESC
+      LIMIT ? OFFSET ?`,
+      [...params, limit, offset],
+    );
 
-    const topModelRows = db
-      .prepare(
-        `SELECT
-          uv.brand AS brand,
-          uv.model AS model,
-          COUNT(*) AS count
-        FROM user_vehicles uv
-        INNER JOIN users u ON u.id = uv.owner_id
-        WHERE ${whereClause}
-        GROUP BY LOWER(uv.brand), LOWER(uv.model)
-        ORDER BY count DESC, uv.brand ASC, uv.model ASC
-        LIMIT 5`,
-      )
-      .all(...params);
+    const topModelRows = await adapter.all(
+      `SELECT
+        uv.brand AS brand,
+        uv.model AS model,
+        COUNT(*) AS count
+      FROM user_vehicles uv
+      INNER JOIN users u ON u.id = uv.owner_id
+      WHERE ${whereClause}
+      GROUP BY LOWER(uv.brand), LOWER(uv.model)
+      ORDER BY count DESC, uv.brand ASC, uv.model ASC
+      LIMIT 5`,
+      params,
+    );
 
     return {
       items: rows.map(toAdminUserVehicle),
@@ -290,7 +283,7 @@ export function createAdminService({ db, now = () => Date.now() }) {
     };
   }
 
-  function listCatalogVehicles({
+  async function listCatalogVehicles({
     page = 1,
     limit = 20,
     search = "",
@@ -331,20 +324,20 @@ export function createAdminService({ db, now = () => Date.now() }) {
       conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const offset = (page - 1) * limit;
 
-    const totalRow = db
-      .prepare(`SELECT COUNT(*) AS total FROM catalog_vehicles ${whereClause}`)
-      .get(...params);
+    const totalRow = await adapter.get(
+      `SELECT COUNT(*) AS total FROM catalog_vehicles ${whereClause}`,
+      params,
+    );
     const total = Number(totalRow?.total ?? 0);
 
-    const rows = db
-      .prepare(
-        `SELECT *
-        FROM catalog_vehicles
-        ${whereClause}
-        ORDER BY active DESC, brand ASC, model ASC, year DESC
-        LIMIT ? OFFSET ?`,
-      )
-      .all(...params, limit, offset);
+    const rows = await adapter.all(
+      `SELECT *
+      FROM catalog_vehicles
+      ${whereClause}
+      ORDER BY active DESC, brand ASC, model ASC, year DESC
+      LIMIT ? OFFSET ?`,
+      [...params, limit, offset],
+    );
 
     return {
       items: rows.map(toAdminCatalogVehicle),
@@ -352,18 +345,17 @@ export function createAdminService({ db, now = () => Date.now() }) {
     };
   }
 
-  function assertUniqueCatalogVehicle({ brand, model, year, fuel }, excludeId = null) {
+  async function assertUniqueCatalogVehicle({ brand, model, year, fuel }, excludeId = null) {
     const targetBrand = brand.trim().toLowerCase();
     const targetModel = model.trim().toLowerCase();
     const targetFuel = fuel.trim().toLowerCase();
 
-    const candidates = db
-      .prepare(
-        `SELECT id, brand, model, fuel
-        FROM catalog_vehicles
-        WHERE year = ?`,
-      )
-      .all(year);
+    const candidates = await adapter.all(
+      `SELECT id, brand, model, fuel
+      FROM catalog_vehicles
+      WHERE year = ?`,
+      [year],
+    );
 
     const existing = candidates.find(
       (row) =>
@@ -382,7 +374,7 @@ export function createAdminService({ db, now = () => Date.now() }) {
     }
   }
 
-  function createCatalogVehicle(adminUserId, payload) {
+  async function createCatalogVehicle(adminUserId, payload) {
     const validation = validateCreateCatalogVehicle(payload);
     if (!validation.valid) {
       throw new AdminError(400, "Dados do veículo do catálogo inválidos.", {
@@ -391,12 +383,12 @@ export function createAdminService({ db, now = () => Date.now() }) {
     }
 
     const { data } = validation;
-    assertUniqueCatalogVehicle(data);
+    await assertUniqueCatalogVehicle(data);
 
     const id = randomUUID();
     const nowIso = new Date(now()).toISOString();
 
-    db.prepare(
+    await adapter.run(
       `INSERT INTO catalog_vehicles (
         id,
         brand,
@@ -412,29 +404,31 @@ export function createAdminService({ db, now = () => Date.now() }) {
         created_at,
         updated_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(
-      id,
-      data.brand,
-      data.model,
-      data.year,
-      data.fuel,
-      data.category,
-      data.costFactor,
-      data.referenceConsumption,
-      data.fipePrice,
-      data.active ? 1 : 0,
-      adminUserId ?? null,
-      nowIso,
-      nowIso,
+      [
+        id,
+        data.brand,
+        data.model,
+        data.year,
+        data.fuel,
+        data.category,
+        data.costFactor,
+        data.referenceConsumption,
+        data.fipePrice,
+        data.active ? 1 : 0,
+        adminUserId ?? null,
+        nowIso,
+        nowIso,
+      ],
     );
 
-    const created = db
-      .prepare("SELECT * FROM catalog_vehicles WHERE id = ? LIMIT 1")
-      .get(id);
+    const created = await adapter.get(
+      "SELECT * FROM catalog_vehicles WHERE id = ? LIMIT 1",
+      [id],
+    );
     return toAdminCatalogVehicle(created);
   }
 
-  function updateCatalogVehicle(adminUserId, id, payload) {
+  async function updateCatalogVehicle(adminUserId, id, payload) {
     const validation = validateUpdateCatalogVehicle(payload);
     if (!validation.valid) {
       throw new AdminError(400, "Dados de atualização do veículo inválidos.", {
@@ -442,9 +436,10 @@ export function createAdminService({ db, now = () => Date.now() }) {
       });
     }
 
-    const existing = db
-      .prepare("SELECT * FROM catalog_vehicles WHERE id = ? LIMIT 1")
-      .get(id);
+    const existing = await adapter.get(
+      "SELECT * FROM catalog_vehicles WHERE id = ? LIMIT 1",
+      [id],
+    );
     if (!existing) {
       throw new AdminError(404, "Veículo do catálogo não encontrado.");
     }
@@ -467,7 +462,7 @@ export function createAdminService({ db, now = () => Date.now() }) {
     const nextActive =
       data.active !== undefined ? (data.active ? 1 : 0) : existing.active;
 
-    assertUniqueCatalogVehicle(
+    await assertUniqueCatalogVehicle(
       {
         brand: nextBrand,
         model: nextModel,
@@ -479,7 +474,7 @@ export function createAdminService({ db, now = () => Date.now() }) {
 
     const nowIso = new Date(now()).toISOString();
 
-    db.prepare(
+    await adapter.run(
       `UPDATE catalog_vehicles
       SET
         brand = ?,
@@ -494,28 +489,30 @@ export function createAdminService({ db, now = () => Date.now() }) {
         updated_by = ?,
         updated_at = ?
       WHERE id = ?`,
-    ).run(
-      nextBrand,
-      nextModel,
-      nextYear,
-      nextFuel,
-      nextCategory,
-      nextCostFactor,
-      nextReferenceConsumption,
-      nextFipePrice,
-      nextActive,
-      adminUserId ?? null,
-      nowIso,
-      existing.id,
+      [
+        nextBrand,
+        nextModel,
+        nextYear,
+        nextFuel,
+        nextCategory,
+        nextCostFactor,
+        nextReferenceConsumption,
+        nextFipePrice,
+        nextActive,
+        adminUserId ?? null,
+        nowIso,
+        existing.id,
+      ],
     );
 
-    const updated = db
-      .prepare("SELECT * FROM catalog_vehicles WHERE id = ? LIMIT 1")
-      .get(existing.id);
+    const updated = await adapter.get(
+      "SELECT * FROM catalog_vehicles WHERE id = ? LIMIT 1",
+      [existing.id],
+    );
     return toAdminCatalogVehicle(updated);
   }
 
-  function listCatalogServices({
+  async function listCatalogServices({
     page = 1,
     limit = 20,
     search = "",
@@ -558,20 +555,20 @@ export function createAdminService({ db, now = () => Date.now() }) {
       conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const offset = (page - 1) * limit;
 
-    const totalRow = db
-      .prepare(`SELECT COUNT(*) AS total FROM catalog_services ${whereClause}`)
-      .get(...params);
+    const totalRow = await adapter.get(
+      `SELECT COUNT(*) AS total FROM catalog_services ${whereClause}`,
+      params,
+    );
     const total = Number(totalRow?.total ?? 0);
 
-    const rows = db
-      .prepare(
-        `SELECT *
-        FROM catalog_services
-        ${whereClause}
-        ORDER BY active DESC, interval_km ASC, name ASC
-        LIMIT ? OFFSET ?`,
-      )
-      .all(...params, limit, offset);
+    const rows = await adapter.all(
+      `SELECT *
+      FROM catalog_services
+      ${whereClause}
+      ORDER BY active DESC, interval_km ASC, name ASC
+      LIMIT ? OFFSET ?`,
+      [...params, limit, offset],
+    );
 
     return {
       items: rows.map(toAdminCatalogService),
@@ -579,11 +576,11 @@ export function createAdminService({ db, now = () => Date.now() }) {
     };
   }
 
-  function assertUniqueCatalogServiceName(name, excludeId = null) {
+  async function assertUniqueCatalogServiceName(name, excludeId = null) {
     const targetName = name.trim().toLowerCase();
-    const candidates = db
-      .prepare("SELECT id, name FROM catalog_services")
-      .all();
+    const candidates = await adapter.all(
+      "SELECT id, name FROM catalog_services",
+    );
 
     const existing = candidates.find(
       (row) =>
@@ -603,7 +600,7 @@ export function createAdminService({ db, now = () => Date.now() }) {
     }
   }
 
-  function createCatalogService(adminUserId, payload) {
+  async function createCatalogService(adminUserId, payload) {
     const validation = validateCreateCatalogService(payload);
     if (!validation.valid) {
       throw new AdminError(400, "Dados do serviço do catálogo inválidos.", {
@@ -612,13 +609,13 @@ export function createAdminService({ db, now = () => Date.now() }) {
     }
 
     const { data } = validation;
-    assertUniqueCatalogServiceName(data.name);
+    await assertUniqueCatalogServiceName(data.name);
 
     const id = randomUUID();
     const nowIso = new Date(now()).toISOString();
 
     try {
-      db.prepare(
+      await adapter.run(
         `INSERT INTO catalog_services (
           id,
           name,
@@ -633,19 +630,20 @@ export function createAdminService({ db, now = () => Date.now() }) {
           created_at,
           updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      ).run(
-        id,
-        data.name,
-        data.category,
-        data.intervalKm,
-        data.intervalMonths,
-        data.baseCost,
-        data.combustionOnly ? 1 : 0,
-        data.notes,
-        data.active ? 1 : 0,
-        adminUserId ?? null,
-        nowIso,
-        nowIso,
+        [
+          id,
+          data.name,
+          data.category,
+          data.intervalKm,
+          data.intervalMonths,
+          data.baseCost,
+          data.combustionOnly ? 1 : 0,
+          data.notes,
+          data.active ? 1 : 0,
+          adminUserId ?? null,
+          nowIso,
+          nowIso,
+        ],
       );
     } catch (error) {
       if (isUniqueConstraintError(error)) {
@@ -660,13 +658,14 @@ export function createAdminService({ db, now = () => Date.now() }) {
       throw error;
     }
 
-    const created = db
-      .prepare("SELECT * FROM catalog_services WHERE id = ? LIMIT 1")
-      .get(id);
+    const created = await adapter.get(
+      "SELECT * FROM catalog_services WHERE id = ? LIMIT 1",
+      [id],
+    );
     return toAdminCatalogService(created);
   }
 
-  function updateCatalogService(adminUserId, id, payload) {
+  async function updateCatalogService(adminUserId, id, payload) {
     const validation = validateUpdateCatalogService(payload);
     if (!validation.valid) {
       throw new AdminError(400, "Dados de atualização do serviço inválidos.", {
@@ -674,9 +673,10 @@ export function createAdminService({ db, now = () => Date.now() }) {
       });
     }
 
-    const existing = db
-      .prepare("SELECT * FROM catalog_services WHERE id = ? LIMIT 1")
-      .get(id);
+    const existing = await adapter.get(
+      "SELECT * FROM catalog_services WHERE id = ? LIMIT 1",
+      [id],
+    );
     if (!existing) {
       throw new AdminError(404, "Serviço do catálogo não encontrado.");
     }
@@ -703,12 +703,12 @@ export function createAdminService({ db, now = () => Date.now() }) {
     const nextActive =
       data.active !== undefined ? (data.active ? 1 : 0) : existing.active;
 
-    assertUniqueCatalogServiceName(nextName, existing.id);
+    await assertUniqueCatalogServiceName(nextName, existing.id);
 
     const nowIso = new Date(now()).toISOString();
 
     try {
-      db.prepare(
+      await adapter.run(
         `UPDATE catalog_services
         SET
           name = ?,
@@ -722,18 +722,19 @@ export function createAdminService({ db, now = () => Date.now() }) {
           updated_by = ?,
           updated_at = ?
         WHERE id = ?`,
-      ).run(
-        nextName,
-        nextCategory,
-        nextIntervalKm,
-        nextIntervalMonths,
-        nextBaseCost,
-        nextCombustionOnly,
-        nextNotes,
-        nextActive,
-        adminUserId ?? null,
-        nowIso,
-        existing.id,
+        [
+          nextName,
+          nextCategory,
+          nextIntervalKm,
+          nextIntervalMonths,
+          nextBaseCost,
+          nextCombustionOnly,
+          nextNotes,
+          nextActive,
+          adminUserId ?? null,
+          nowIso,
+          existing.id,
+        ],
       );
     } catch (error) {
       if (isUniqueConstraintError(error)) {
@@ -748,9 +749,10 @@ export function createAdminService({ db, now = () => Date.now() }) {
       throw error;
     }
 
-    const updated = db
-      .prepare("SELECT * FROM catalog_services WHERE id = ? LIMIT 1")
-      .get(existing.id);
+    const updated = await adapter.get(
+      "SELECT * FROM catalog_services WHERE id = ? LIMIT 1",
+      [existing.id],
+    );
     return toAdminCatalogService(updated);
   }
 
