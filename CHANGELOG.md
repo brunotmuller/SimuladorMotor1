@@ -2,6 +2,17 @@
 
 Todas as mudanças relevantes do **TorqueLab** serão documentadas neste arquivo, seguindo o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 
+## [2026-11-27] - vercel-postgres-storage
+
+### Adicionado
+- Suporte nativo ao **Postgres via Vercel Storage / Neon (`POSTGRES_URL` / `DATABASE_URL`)** com pacote `pg` no adaptador dual (`server/db/adapter.mjs`), convertendo automaticamente placeholders `?` para `$1, $2, ...` (`RF-01`, `RN-03`).
+- Trava explícita contra disco efêmero na Vercel (`VERCEL=1` + `NODE_ENV=production` sem Postgres retorna `503 POSTGRES_CONFIG_MISSING`) e mapeamento de falhas de rede/conexão para `503 POSTGRES_CONNECTION_ERROR` preservando erros de unicidade `23505` (`409 Conflict`) (`RN-01`, `RN-02`).
+
+### Corrigido / Alterado
+- Removida dependência do Turso (`@libsql/client`, `TURSO_*`) em `package.json`, `.env.example` e `server/index.mjs`.
+- Ajustados `server/auth/db.mjs` e `server/dashboard/db.mjs` para compatibilidade total entre PostgreSQL e SQLite (`INSERT ... ON CONFLICT DO NOTHING`, `LOWER(email)`, índices únicos funcionais `LOWER(...)` no Postgres e `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`), mantendo `node:sqlite` (`:memory:` e `./data/torquelab.sqlite`) intacto para desenvolvimento local, Docker e testes offline (`RF-02`, `RF-03`).
+- Atualizada suíte `server/vercel.test.mjs` cobrindo *cold start* Postgres, unicidade `23505 -> 409`, trava `503` e alinhamento de dependências (`23/23` em `npm run test:api`).
+
 ## [2026-11-27] - vercel-fullstack-deploy
 
 ### Adicionado
